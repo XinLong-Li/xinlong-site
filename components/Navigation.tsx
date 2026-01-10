@@ -1,7 +1,7 @@
 "use client";
 import { useTheme } from "next-themes";
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { i18n, type Language } from "@/lib/i18n";
 import Link from "next/link";
 
@@ -11,6 +11,10 @@ export default function Navigation() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
 
   // 判断当前语言（优先检查 /en 前缀）
   const currentLang: Language = pathname?.startsWith("/en") ? "en" : "zh";
@@ -22,6 +26,21 @@ export default function Navigation() {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
+        setThemeMenuOpen(false);
+      }
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+        setLangMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (!mounted) return null;
 
@@ -47,13 +66,14 @@ export default function Navigation() {
 
     const prefix = newLang === "en" ? "/en" : "/zh";
     const newPath = basePath === "/" ? prefix : `${prefix}${basePath}`;
+    setLangMenuOpen(false);
     router.push(newPath);
   };
 
   // 处理主题切换
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    setThemeMenuOpen(false);
   };
 
   // 回到首页
@@ -91,23 +111,48 @@ export default function Navigation() {
         </div>
 
         <div className="navbar-actions">
-          <button
-            className="icon-button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            🌙
-          </button>
+          <div className="dropdown" ref={themeMenuRef}>
+            <button
+              className="icon-button"
+              onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+              aria-label="Toggle theme"
+            >
+              🌙
+            </button>
+            {themeMenuOpen && (
+              <div className="dropdown-menu">
+                <button onClick={() => handleThemeChange("system")} className="dropdown-item">
+                  {t.themeAuto}
+                </button>
+                <button onClick={() => handleThemeChange("light")} className="dropdown-item">
+                  {t.themeLight}
+                </button>
+                <button onClick={() => handleThemeChange("dark")} className="dropdown-item">
+                  {t.themeDark}
+                </button>
+              </div>
+            )}
+          </div>
 
-          <button
-            className="icon-button"
-            onClick={() => handleLangChange(currentLang === "en" ? "zh" : "en")}
-            aria-label="Toggle language"
-            title={currentLang === "en" ? "切换到中文" : "Switch to English"}
-          >
-            🌐
-          </button>
+          <div className="dropdown" ref={langMenuRef}>
+            <button
+              className="icon-button"
+              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              aria-label="Toggle language"
+            >
+              🌐
+            </button>
+            {langMenuOpen && (
+              <div className="dropdown-menu">
+                <button onClick={() => handleLangChange("zh")} className="dropdown-item">
+                  {t.langZh}
+                </button>
+                <button onClick={() => handleLangChange("en")} className="dropdown-item">
+                  {t.langEn}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -125,16 +170,48 @@ export default function Navigation() {
         </div>
 
         <div className="drawer-actions">
-          <button className="icon-button" onClick={toggleTheme} aria-label="Toggle theme">
-            🌙
-          </button>
-          <button
-            className="icon-button"
-            onClick={() => handleLangChange(currentLang === "en" ? "zh" : "en")}
-            aria-label="Toggle language"
-          >
-            🌐
-          </button>
+          <div className="dropdown" ref={themeMenuRef}>
+            <button 
+              className="icon-button" 
+              onClick={() => setThemeMenuOpen(!themeMenuOpen)} 
+              aria-label="Toggle theme"
+            >
+              🌙
+            </button>
+            {themeMenuOpen && (
+              <div className="dropdown-menu">
+                <button onClick={() => handleThemeChange("system")} className="dropdown-item">
+                  {t.themeAuto}
+                </button>
+                <button onClick={() => handleThemeChange("light")} className="dropdown-item">
+                  {t.themeLight}
+                </button>
+                <button onClick={() => handleThemeChange("dark")} className="dropdown-item">
+                  {t.themeDark}
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <div className="dropdown" ref={langMenuRef}>
+            <button
+              className="icon-button"
+              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              aria-label="Toggle language"
+            >
+              🌐
+            </button>
+            {langMenuOpen && (
+              <div className="dropdown-menu">
+                <button onClick={() => handleLangChange("zh")} className="dropdown-item">
+                  {t.langZh}
+                </button>
+                <button onClick={() => handleLangChange("en")} className="dropdown-item">
+                  {t.langEn}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="drawer-links">
