@@ -85,21 +85,28 @@ export default function Navigation() {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <div className="navbar-left">
+        <div className="navbar-logo" onClick={handleLogoClick}>
           <button
             className="icon-button mobile-toggle"
             aria-label="Open menu"
-            onClick={() => setIsMenuOpen((v) => !v)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMenuOpen((v) => !v);
+            }}
           >
             ☰
           </button>
-        </div>
-
-        <div className="navbar-logo" onClick={handleLogoClick}>
           <span className="logo-text">{siteName}</span>
         </div>
 
-        {/* 桌面端二级导航在下方单独一行展示 */}
+        {/* 桌面端导航菜单 */}
+        <div className="nav-menu desktop-only">
+          {navItems.map((item) => (
+            <Link key={item.key} href={item.href} className="nav-item">
+              {item.label}
+            </Link>
+          ))}
+        </div>
 
         <div className="navbar-actions">
           <div className="search-container desktop-only">
@@ -191,15 +198,6 @@ export default function Navigation() {
       </div>
 
       {isMenuOpen && <div className="drawer-backdrop" onClick={() => setIsMenuOpen(false)} />}
-
-      {/* 桌面端导航行 */}
-      <div className="nav-row desktop-only">
-        {navItems.map((item) => (
-          <Link key={item.key} href={item.href} className="nav-item">
-            {item.label}
-          </Link>
-        ))}
-      </div>
     </nav>
   );
 }
