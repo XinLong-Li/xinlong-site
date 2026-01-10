@@ -2,12 +2,8 @@
 export const i18n = {
   zh: {
     home: "首页",
-    archives: "归档",
-    tag: "标签",
-    links: "链接",
-    about: "关于",
     blog: "博客",
-    books: "书单",
+    gallery: "作品集",
     resume: "简历",
     contact: "联系",
     search: "搜索...",
@@ -19,12 +15,8 @@ export const i18n = {
   },
   en: {
     home: "HOME",
-    archives: "ARCHIVES",
-    tag: "TAG",
-    links: "LINKS",
-    about: "ABOUT",
     blog: "BLOG",
-    books: "BOOKS",
+    gallery: "GALLERY",
     resume: "RESUME",
     contact: "CONTACT",
     search: "Search...",

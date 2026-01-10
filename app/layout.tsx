@@ -14,6 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <Providers>
           <Navigation />
+          <div className="bg-glow" />
           <main className="container">{children}</main>
         </Providers>
       </body>

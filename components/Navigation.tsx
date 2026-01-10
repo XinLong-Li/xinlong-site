@@ -33,15 +33,11 @@ export default function Navigation() {
 
   // 导航项
   const navItems = [
-    { key: "home", label: t.home, href: `${langPrefix}/` },
-    { key: "blog", label: t.blog, href: `${langPrefix}/blog` },
-    { key: "archives", label: t.archives, href: `${langPrefix}/archives` },
-    { key: "tag", label: t.tag, href: `${langPrefix}/tag` },
-    { key: "links", label: t.links, href: `${langPrefix}/links` },
-    { key: "about", label: t.about, href: `${langPrefix}/about` },
-    { key: "books", label: t.books, href: `${langPrefix}/books` },
-    { key: "resume", label: t.resume, href: `${langPrefix}/resume` },
-    { key: "contact", label: t.contact, href: `${langPrefix}/contact` },
+    { key: "home", label: t.home, href: `${langPrefix}` },
+    { key: "blog", label: t.blog, href: `${langPrefix}#blog` },
+    { key: "gallery", label: t.gallery, href: `${langPrefix}/gallery` },
+    { key: "resume", label: t.resume, href: `${langPrefix}#resume` },
+    { key: "contact", label: t.contact, href: `${langPrefix}#contact` },
   ];
 
   // 处理语言切换 — 保留当前页面路径
