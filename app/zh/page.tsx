@@ -1,67 +1,70 @@
 import Link from "next/link";
 import { getPosts } from "@/lib/posts";
 
+export const metadata = {
+  title: "李新龙 - 嵌入式软件工程师",
+  description: "专注于机器人运动控制与嵌入式系统开发",
+};
+
 export default function HomeZh() {
-  const posts = getPosts("zh").slice(0, 5);
+  const posts = getPosts("zh").slice(0, 3);
   return (
     <>
-        <section className="section hero" id="home">
-          <span className="pre">你好，我的名字是</span>
-          <h1>李新龙</h1>
-          <h2>专注于构建高效的全栈解决方案</h2>
-          <p style={{ maxWidth: 680, color: "#8892b0" }}>
-            我关注工程实践与产品落地，使用现代技术栈解决复杂问题。目前侧重高性能 Web 应用、分布式系统与自动化工具。
-          </p>
-          <div className="skills-grid">
-            <div className="skill-tag">TypeScript</div>
-            <div className="skill-tag">React / Next.js</div>
-            <div className="skill-tag">Node.js</div>
-            <div className="skill-tag">Go</div>
-            <div className="skill-tag">Docker</div>
-            <div className="skill-tag">PostgreSQL</div>
-          </div>
-        </section>
+      <section className="section hero">
+        <span className="pre">你好，我是</span>
+        <h1>李新龙</h1>
+        <h2>嵌入式软件工程师 / 机器人运动控制</h2>
+        <p style={{ maxWidth: 680, color: "#000" }}>
+          专注于机器人运动控制、机械臂开发和实时嵌入式系统。致力于将控制算法与硬件完美结合，实现高精度、高可靠性的自动化解决方案。
+        </p>
+        <div className="skills-grid">
+          <div className="skill-tag">C/C++</div>
+          <div className="skill-tag">ROS/ROS2</div>
+          <div className="skill-tag">运动学/动力学</div>
+          <div className="skill-tag">STM32/ARM</div>
+          <div className="skill-tag">实时系统</div>
+          <div className="skill-tag">PID/MPC控制</div>
+        </div>
+      </section>
 
-      <section className="section" id="blog">
-        <h2 style={{ marginBottom: 12 }}>博客（最近）</h2>
-        <ul>
+      <section className="section">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <h2>精选博客</h2>
+          <Link href="/zh/blog" style={{ color: "#000", fontSize: "0.95rem", textDecoration: "underline" }}>
+            查看全部 →
+          </Link>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {posts.map((post) => (
-            <li key={post.slug} style={{ marginBottom: 8 }}>
-              <Link href={`/zh/blog/${post.slug}`}>
-                <strong>{post.title}</strong> — <small>{post.date}</small>
-              </Link>
-              {post.summary && <div style={{ color: "#8892b0" }}>{post.summary}</div>}
-            </li>
+            <div key={post.slug} className="project-card">
+              <h3>
+                <Link href={`/zh/blog/${post.slug}`} style={{ color: "#000", textDecoration: "none" }}>
+                  {post.title}
+                </Link>
+              </h3>
+              <p style={{ color: "#666", fontSize: "0.85rem", marginBottom: 8 }}>{post.date}</p>
+              {post.summary && <p style={{ color: "#000" }}>{post.summary}</p>}
+            </div>
           ))}
-        </ul>
-        <p><Link href="/zh/blog">查看更多 →</Link></p>
-      </section>
-
-      <section className="section" id="projects">
-        <h2 style={{ marginBottom: 12 }}>精选项目</h2>
-        <div className="project-card">
-          <h3>CloudMonitor 高性能监控看板</h3>
-          <p>分布式系统的实时指标可视化平台。支持高吞吐数据注入，WASM 加速渲染，实现毫秒级响应。</p>
-          <div className="project-tags"><span>#Rust</span><span>#React</span><span>#gRPC</span></div>
-        </div>
-        <div className="project-card">
-          <h3>SmartFlow 自动化工作流引擎</h3>
-          <p>基于 Node.js 的插件化自动化工具，通过低代码编排部署流程。</p>
-          <div className="project-tags"><span>#Node.js</span><span>#Redis</span><span>#Next.js</span></div>
         </div>
       </section>
 
-      <section className="section" id="resume">
-        <h2>简历</h2>
-        <p style={{ color: "#8892b0" }}>背景与经历概览。</p>
-        <p><Link href="/zh/resume">查看简历 →</Link></p>
-      </section>
-
-      <section className="section" id="contact">
-        <div className="contact-box">
-          <h2>联系我</h2>
-          <p style={{ color: "#8892b0", marginTop: 8 }}>合作、演讲或交流，欢迎邮件联系。</p>
-          <a className="btn" href="mailto:lixinlong@example.com">打个招呼</a>
+      <section className="section">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <h2>精选项目</h2>
+          <Link href="/zh/projects" style={{ color: "#000", fontSize: "0.95rem", textDecoration: "underline" }}>
+            查看全部 →
+          </Link>
+        </div>
+        <div className="project-card" style={{ marginBottom: 16 }}>
+          <h3>六轴机械臂运动控制系统</h3>
+          <p>基于 ROS 的六轴机械臂控制系统，实现逆运动学求解、轨迹规划和力控。支持示教再现、视觉抓取等功能。</p>
+          <div className="project-tags"><span>#ROS</span><span>#C++</span><span>#运动学</span></div>
+        </div>
+        <div className="project-card">
+          <h3>移动机器人导航与定位</h3>
+          <p>集成激光 SLAM 和视觉里程计的移动机器人导航系统，支持自主建图、路径规划和避障。</p>
+          <div className="project-tags"><span>#SLAM</span><span>#ROS2</span><span>#导航</span></div>
         </div>
       </section>
     </>

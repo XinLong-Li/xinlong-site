@@ -10,8 +10,6 @@ export default function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // 判断当前语言（优先检查 /en 前缀）
@@ -23,7 +21,6 @@ export default function Navigation() {
   // Close mobile drawer on route change
   useEffect(() => {
     setIsMenuOpen(false);
-    setSearchOpen(false);
   }, [pathname]);
 
   if (!mounted) return null;
@@ -33,11 +30,10 @@ export default function Navigation() {
 
   // 导航项
   const navItems = [
-    { key: "home", label: t.home, href: `${langPrefix}` },
-    { key: "blog", label: t.blog, href: `${langPrefix}#blog` },
-    { key: "gallery", label: t.gallery, href: `${langPrefix}/gallery` },
-    { key: "resume", label: t.resume, href: `${langPrefix}#resume` },
-    { key: "contact", label: t.contact, href: `${langPrefix}#contact` },
+    { key: "blog", label: t.blog, href: `${langPrefix}/blog` },
+    { key: "projects", label: t.projects, href: `${langPrefix}/projects` },
+    { key: "resume", label: t.resume, href: `${langPrefix}/resume` },
+    { key: "contact", label: t.contact, href: `${langPrefix}/contact` },
   ];
 
   // 处理语言切换 — 保留当前页面路径
@@ -55,23 +51,9 @@ export default function Navigation() {
   };
 
   // 处理主题切换
-  const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme);
-  };
-
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
-  };
-
-  // 处理搜索
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`${langPrefix}/search?q=${encodeURIComponent(searchQuery)}`);
-      setSearchQuery("");
-      setSearchOpen(false);
-    }
   };
 
   // 回到首页
@@ -109,43 +91,22 @@ export default function Navigation() {
         </div>
 
         <div className="navbar-actions">
-          <div className="search-container desktop-only">
-            <button
-              className="icon-button"
-              onClick={() => setSearchOpen(!searchOpen)}
-              title={t.search}
-            >
-              🔍
-            </button>
-            {searchOpen && (
-              <form onSubmit={handleSearch} className="search-form">
-                <input
-                  type="text"
-                  placeholder={t.search}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  autoFocus
-                  className="search-input"
-                />
-              </form>
-            )}
-          </div>
-
           <button
             className="icon-button"
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            title={t.theme}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {theme === "dark" ? "🌙" : "☀️"}
+            🌙
           </button>
 
           <button
-            className="pill-button"
+            className="icon-button"
             onClick={() => handleLangChange(currentLang === "en" ? "zh" : "en")}
             aria-label="Toggle language"
+            title={currentLang === "en" ? "切换到中文" : "Switch to English"}
           >
-            {currentLang === "en" ? "中文" : "English"}
+            🌐
           </button>
         </div>
       </div>
@@ -163,28 +124,16 @@ export default function Navigation() {
           </button>
         </div>
 
-        <form onSubmit={handleSearch} className="drawer-search">
-          <input
-            type="text"
-            placeholder={t.search}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="drawer-search-input"
-          />
-          <button type="submit" className="pill-button">
-            🔍
-          </button>
-        </form>
-
         <div className="drawer-actions">
           <button className="icon-button" onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === "dark" ? "🌙" : "☀️"}
+            🌙
           </button>
           <button
-            className="pill-button"
+            className="icon-button"
             onClick={() => handleLangChange(currentLang === "en" ? "zh" : "en")}
+            aria-label="Toggle language"
           >
-            {currentLang === "en" ? "中文" : "English"}
+            🌐
           </button>
         </div>
 
