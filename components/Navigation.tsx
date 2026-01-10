@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { i18n, type Language } from "@/lib/i18n";
 import Link from "next/link";
+import { Sun, Moon, MonitorSmartphone, Globe, Menu } from "lucide-react";
 
 export default function Navigation() {
   const { theme, setTheme } = useTheme();
@@ -15,6 +16,10 @@ export default function Navigation() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
+  const drawerThemeMenuRef = useRef<HTMLDivElement>(null);
+  const drawerLangMenuRef = useRef<HTMLDivElement>(null);
+  const [drawerThemeMenuOpen, setDrawerThemeMenuOpen] = useState(false);
+  const [drawerLangMenuOpen, setDrawerLangMenuOpen] = useState(false);
 
   // 判断当前语言（优先检查 /en 前缀）
   const currentLang: Language = pathname?.startsWith("/en") ? "en" : "zh";
@@ -35,6 +40,12 @@ export default function Navigation() {
       }
       if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
         setLangMenuOpen(false);
+      }
+      if (drawerThemeMenuRef.current && !drawerThemeMenuRef.current.contains(event.target as Node)) {
+        setDrawerThemeMenuOpen(false);
+      }
+      if (drawerLangMenuRef.current && !drawerLangMenuRef.current.contains(event.target as Node)) {
+        setDrawerLangMenuOpen(false);
       }
     };
 
@@ -84,6 +95,13 @@ export default function Navigation() {
   // 网站名称
   const siteName = currentLang === "en" ? "Xinlong Li" : "李新龙";
 
+  // 根据当前主题显示不同的图标组件
+  const ThemeIcon = () => {
+    if (theme === "light") return <Sun size={16} />;
+    if (theme === "dark") return <Moon size={16} />;
+    return <MonitorSmartphone size={16} />; // system/auto
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
@@ -96,7 +114,7 @@ export default function Navigation() {
               setIsMenuOpen((v) => !v);
             }}
           >
-            ☰
+            <Menu size={18} />
           </button>
           <span className="logo-text">{siteName}</span>
         </div>
@@ -117,18 +135,21 @@ export default function Navigation() {
               onClick={() => setThemeMenuOpen(!themeMenuOpen)}
               aria-label="Toggle theme"
             >
-              🌙
+              <ThemeIcon />
             </button>
             {themeMenuOpen && (
               <div className="dropdown-menu">
                 <button onClick={() => handleThemeChange("system")} className="dropdown-item">
-                  {t.themeAuto}
+                  <span>{t.themeAuto}</span>
+                  <MonitorSmartphone size={14} />
                 </button>
                 <button onClick={() => handleThemeChange("light")} className="dropdown-item">
-                  {t.themeLight}
+                  <span>{t.themeLight}</span>
+                  <Sun size={14} />
                 </button>
                 <button onClick={() => handleThemeChange("dark")} className="dropdown-item">
-                  {t.themeDark}
+                  <span>{t.themeDark}</span>
+                  <Moon size={14} />
                 </button>
               </div>
             )}
@@ -140,7 +161,7 @@ export default function Navigation() {
               onClick={() => setLangMenuOpen(!langMenuOpen)}
               aria-label="Toggle language"
             >
-              🌐
+              <Globe size={16} />
             </button>
             {langMenuOpen && (
               <div className="dropdown-menu">
@@ -169,50 +190,7 @@ export default function Navigation() {
           </button>
         </div>
 
-        <div className="drawer-actions">
-          <div className="dropdown" ref={themeMenuRef}>
-            <button 
-              className="icon-button" 
-              onClick={() => setThemeMenuOpen(!themeMenuOpen)} 
-              aria-label="Toggle theme"
-            >
-              🌙
-            </button>
-            {themeMenuOpen && (
-              <div className="dropdown-menu">
-                <button onClick={() => handleThemeChange("system")} className="dropdown-item">
-                  {t.themeAuto}
-                </button>
-                <button onClick={() => handleThemeChange("light")} className="dropdown-item">
-                  {t.themeLight}
-                </button>
-                <button onClick={() => handleThemeChange("dark")} className="dropdown-item">
-                  {t.themeDark}
-                </button>
-              </div>
-            )}
-          </div>
-          
-          <div className="dropdown" ref={langMenuRef}>
-            <button
-              className="icon-button"
-              onClick={() => setLangMenuOpen(!langMenuOpen)}
-              aria-label="Toggle language"
-            >
-              🌐
-            </button>
-            {langMenuOpen && (
-              <div className="dropdown-menu">
-                <button onClick={() => handleLangChange("zh")} className="dropdown-item">
-                  {t.langZh}
-                </button>
-                <button onClick={() => handleLangChange("en")} className="dropdown-item">
-                  {t.langEn}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* 抽屉菜单不显示主题和语言切换按钮 */}
 
         <div className="drawer-links">
           {navItems.map((item) => (
