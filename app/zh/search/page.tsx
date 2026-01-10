@@ -1,4 +1,4 @@
-export default function SearchPage() {
+export default function SearchPageZh() {
   return (
     <section>
       <h1>搜索结果</h1>

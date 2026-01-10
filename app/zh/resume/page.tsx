@@ -1,4 +1,4 @@
-export default function ResumePage() {
+export default function ResumePageZh() {
   return (
     <section>
       <h1>简历</h1>

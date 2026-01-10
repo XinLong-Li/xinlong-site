@@ -1,4 +1,4 @@
-export default function ArchivesPage() {
+export default function ArchivesPageZh() {
   return (
     <section>
       <h1>归档</h1>

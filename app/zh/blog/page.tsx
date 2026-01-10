@@ -3,7 +3,7 @@ import { getPosts } from "@/lib/posts";
 
 export const revalidate = 60;
 
-export default function BlogListPage() {
+export default function BlogListPageZh() {
   const posts = getPosts("zh");
   return (
     <section>
@@ -12,7 +12,7 @@ export default function BlogListPage() {
       <ul>
         {posts.map((post) => (
           <li key={post.slug}>
-            <Link href={`/blog/${post.slug}`}>
+            <Link href={`/zh/blog/${post.slug}`}>
               <strong>{post.title}</strong> — <small>{post.date}</small>
             </Link>
             {post.summary && <div>{post.summary}</div>}

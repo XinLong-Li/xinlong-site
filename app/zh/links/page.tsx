@@ -1,4 +1,4 @@
-export default function LinksPage() {
+export default function LinksPageZh() {
   return (
     <section>
       <h1>链接</h1>

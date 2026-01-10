@@ -1,4 +1,4 @@
-export default function BooksPage() {
+export default function BooksPageZh() {
   return (
     <section>
       <h1>书单</h1>

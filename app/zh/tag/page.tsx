@@ -1,4 +1,4 @@
-export default function TagPage() {
+export default function TagPageZh() {
   return (
     <section>
       <h1>标签</h1>

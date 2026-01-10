@@ -1,4 +1,4 @@
-export default function ContactPage() {
+export default function ContactPageZh() {
   return (
     <section>
       <h1>联系</h1>

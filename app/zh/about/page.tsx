@@ -1,4 +1,4 @@
-export default function AboutPage() {
+export default function AboutPageZh() {
   return (
     <section>
       <h1>关于</h1>
