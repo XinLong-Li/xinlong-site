@@ -14,7 +14,7 @@ export default function HomeEn() {
         <span className="pre">Hi, I am</span>
         <h1>Xinlong Li</h1>
         <h2>Embedded Software Engineer / Robot Motion Control</h2>
-        <p style={{ maxWidth: 680, color: "#000" }}>
+        <p className="hero-desc">
           Specializing in robot motion control, robotic arm development, and real-time embedded systems. Committed to seamlessly integrating control algorithms with hardware for high-precision, highly reliable automation solutions.
         </p>
         <div className="skills-grid">
@@ -30,7 +30,7 @@ export default function HomeEn() {
       <section className="section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h2>Featured Blog</h2>
-          <Link href="/en/blog" style={{ color: "#000", fontSize: "0.95rem", textDecoration: "underline" }}>
+          <Link href="/en/blog" className="section-link">
             View All →
           </Link>
         </div>
@@ -38,12 +38,12 @@ export default function HomeEn() {
           {posts.map((post) => (
             <div key={post.slug} className="project-card">
               <h3>
-                <Link href={`/en/blog/${post.slug}`} style={{ color: "#000", textDecoration: "none" }}>
+                <Link href={`/en/blog/${post.slug}`} style={{ color: "inherit", textDecoration: "none" }}>
                   {post.title}
                 </Link>
               </h3>
               <p style={{ color: "#666", fontSize: "0.85rem", marginBottom: 8 }}>{post.date}</p>
-              {post.summary && <p style={{ color: "#000" }}>{post.summary}</p>}
+              {post.summary && <p>{post.summary}</p>}
             </div>
           ))}
         </div>
@@ -52,7 +52,7 @@ export default function HomeEn() {
       <section className="section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h2>Featured Projects</h2>
-          <Link href="/en/projects" style={{ color: "#000", fontSize: "0.95rem", textDecoration: "underline" }}>
+          <Link href="/en/projects" className="section-link">
             View All →
           </Link>
         </div>

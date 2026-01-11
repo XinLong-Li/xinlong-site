@@ -16,8 +16,8 @@ export default function EnContactPage() {
           <div style={{ marginBottom: 32 }}>
             <p style={{ marginBottom: 12 }}>
               <strong>Email:</strong>
-              <a href="mailto:lixinlong@example.com" style={{ color: "#f97316", marginLeft: 8 }}>
-                lixinlong@example.com
+              <a href="mailto:li_xin_long@foxmail.com" style={{ color: "#f97316", marginLeft: 8 }}>
+                li_xin_long@foxmail.com
               </a>
             </p>
             <p>

@@ -14,7 +14,7 @@ export default function HomeZh() {
         <span className="pre">你好，我是</span>
         <h1>李新龙</h1>
         <h2>嵌入式软件工程师 / 机器人运动控制</h2>
-        <p style={{ maxWidth: 680, color: "#000" }}>
+        <p className="hero-desc">
           专注于机器人运动控制、机械臂开发和实时嵌入式系统。致力于将控制算法与硬件完美结合，实现高精度、高可靠性的自动化解决方案。
         </p>
         <div className="skills-grid">
@@ -30,7 +30,7 @@ export default function HomeZh() {
       <section className="section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h2>精选博客</h2>
-          <Link href="/zh/blog" style={{ color: "#000", fontSize: "0.95rem", textDecoration: "underline" }}>
+          <Link href="/zh/blog" className="section-link">
             查看全部 →
           </Link>
         </div>
@@ -38,12 +38,12 @@ export default function HomeZh() {
           {posts.map((post) => (
             <div key={post.slug} className="project-card">
               <h3>
-                <Link href={`/zh/blog/${post.slug}`} style={{ color: "#000", textDecoration: "none" }}>
+                <Link href={`/zh/blog/${post.slug}`} style={{ color: "inherit", textDecoration: "none" }}>
                   {post.title}
                 </Link>
               </h3>
               <p style={{ color: "#666", fontSize: "0.85rem", marginBottom: 8 }}>{post.date}</p>
-              {post.summary && <p style={{ color: "#000" }}>{post.summary}</p>}
+              {post.summary && <p>{post.summary}</p>}
             </div>
           ))}
         </div>
@@ -52,7 +52,7 @@ export default function HomeZh() {
       <section className="section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h2>精选项目</h2>
-          <Link href="/zh/projects" style={{ color: "#000", fontSize: "0.95rem", textDecoration: "underline" }}>
+          <Link href="/zh/projects" className="section-link">
             查看全部 →
           </Link>
         </div>
