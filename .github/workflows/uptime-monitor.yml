@@ -15,8 +15,8 @@ jobs:
     steps:
       - name: Check public site
         run: |
-          set -e
-          curl -fsSL --max-time 15 https://xinlong-li.site/api/health >/dev/null || curl -fsSL --max-time 15 https://xinlong-li.site/ >/dev/null
+          # Check if site returns 200 OK (homepage auto-redirects to /zh)
+          curl -fsSL --max-time 15 -w "%{http_code}" https://xinlong-li.site/ | grep -q "200\|301\|302"
 
       - name: Create incident on failure
         if: failure()
