@@ -1,6 +1,12 @@
 [build]
   command = "npm run build"
-  publish = ".next"
+  # Let the Next.js plugin handle the publish directory
+
+[build.environment]
+  NODE_VERSION = "20"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions]
+  node_bundler = "esbuild"
