@@ -23,24 +23,25 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Preflight - check required secrets
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+        run: |
+          set -e
+          for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
+            if [ -z "${!var}" ]; then
+              echo "❌ Missing required secret: $var" >&2
+              exit 1
+            fi
+          done
+          echo "✅ All required secrets present"
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.0
-                - name: Preflight - check required secrets
-                  env:
-                    SSH_HOST: ${{ secrets.SSH_HOST }}
-                    SSH_USER: ${{ secrets.SSH_USER }}
-                    SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-                    SSH_PORT: ${{ secrets.SSH_PORT }}
-                    APP_DIR: ${{ secrets.APP_DIR }}
-                  run: |
-                    set -e
-                    for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
-                      if [ -z "${!var}" ]; then
-                        echo "❌ Missing required secret: $var" >&2
-                        exit 1
-                      fi
-                    done
-                    echo "✅ All required secrets present"
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -56,6 +57,8 @@ jobs:
             fi
             git fetch --all
             git reset --hard origin/main
+            # Ensure logs directory exists for PM2
+            mkdir -p logs
             # Install Node (optional if already installed)
             if ! command -v node >/dev/null 2>&1; then
               echo "Node not found; please install Node 20 manually or via nvm"
