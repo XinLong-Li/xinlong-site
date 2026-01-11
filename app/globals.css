@@ -507,3 +507,36 @@ ul {
 li {
   margin: 4px 0;
 }
+
+/* 页脚样式 */
+.footer {
+  width: 100%;
+  margin-top: 80px;
+  padding: 40px 0;
+  background: rgba(249, 249, 249, 0.5);
+  border-top: 1px solid #e5e7eb;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+html.dark .footer {
+  background: rgba(34, 34, 34, 0.5);
+  border-top-color: #444;
+}
+
+.footer-content {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.footer-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  transition: color 0.3s;
+}
+
+html.dark .footer-content p {
+  color: #999;
+}
