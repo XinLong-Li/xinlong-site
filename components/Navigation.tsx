@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { i18n, type Language } from "@/lib/i18n";
 import Link from "next/link";
-import { Sun, Moon, MonitorSmartphone, Globe, Menu } from "lucide-react";
+import { Sun, Moon, Globe, Menu } from "lucide-react";
 
 export default function Navigation() {
   const { theme, setTheme } = useTheme();
@@ -12,37 +12,29 @@ export default function Navigation() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
-  const themeMenuRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
-  const drawerThemeMenuRef = useRef<HTMLDivElement>(null);
   const drawerLangMenuRef = useRef<HTMLDivElement>(null);
-  const [drawerThemeMenuOpen, setDrawerThemeMenuOpen] = useState(false);
   const [drawerLangMenuOpen, setDrawerLangMenuOpen] = useState(false);
 
   // 判断当前语言（优先检查 /en 前缀）
   const currentLang: Language = pathname?.startsWith("/en") ? "en" : "zh";
   const t = i18n[currentLang];
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close mobile drawer on route change
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
 
-  // Close dropdowns when clicking outside
+  // Close language dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
-        setThemeMenuOpen(false);
-      }
       if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
         setLangMenuOpen(false);
-      }
-      if (drawerThemeMenuRef.current && !drawerThemeMenuRef.current.contains(event.target as Node)) {
-        setDrawerThemeMenuOpen(false);
       }
       if (drawerLangMenuRef.current && !drawerLangMenuRef.current.contains(event.target as Node)) {
         setDrawerLangMenuOpen(false);
@@ -81,10 +73,9 @@ export default function Navigation() {
     router.push(newPath);
   };
 
-  // 处理主题切换
-  const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme);
-    setThemeMenuOpen(false);
+  // 处理主题切换 - 在 light 和 dark 之间切换
+  const handleThemeToggle = () => {
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   // 回到首页
@@ -98,8 +89,7 @@ export default function Navigation() {
   // 根据当前主题显示不同的图标组件
   const ThemeIcon = () => {
     if (theme === "light") return <Sun size={16} />;
-    if (theme === "dark") return <Moon size={16} />;
-    return <MonitorSmartphone size={16} />; // system/auto
+    return <Moon size={16} />;
   };
 
   return (
@@ -129,31 +119,13 @@ export default function Navigation() {
         </div>
 
         <div className="navbar-actions">
-          <div className="dropdown" ref={themeMenuRef}>
-            <button
-              className="icon-button"
-              onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-              aria-label="Toggle theme"
-            >
-              <ThemeIcon />
-            </button>
-            {themeMenuOpen && (
-              <div className="dropdown-menu">
-                <button onClick={() => handleThemeChange("system")} className="dropdown-item">
-                  <span>{t.themeAuto}</span>
-                  <MonitorSmartphone size={14} />
-                </button>
-                <button onClick={() => handleThemeChange("light")} className="dropdown-item">
-                  <span>{t.themeLight}</span>
-                  <Sun size={14} />
-                </button>
-                <button onClick={() => handleThemeChange("dark")} className="dropdown-item">
-                  <span>{t.themeDark}</span>
-                  <Moon size={14} />
-                </button>
-              </div>
-            )}
-          </div>
+          <button
+            className="icon-button"
+            onClick={handleThemeToggle}
+            aria-label="Toggle theme"
+          >
+            <ThemeIcon />
+          </button>
 
           <div className="dropdown" ref={langMenuRef}>
             <button
