@@ -10,9 +10,18 @@ export default function EnResumePage() {
         <h1 style={{ marginBottom: 48 }}>Resume</h1>
         
         <div className="project-card" style={{ marginBottom: 32 }}>
-          <h2 style={{ marginBottom: 16 }}>Education</h2>
+          <h2 style={{ marginBottom: 16 }}>Experience</h2>
           <ul>
-            <li>University · EE/CS/related major · Degree</li>
+            <li>2025/09 - Present · iStar (Shanghai) Engineering Technology Co., Ltd. · Motion Engineering Department · Motion Control Firmware Engineer</li>
+          </ul>
+          <ul>
+            <li>2022/09 - 2025/08 ·  ShanghaiTech University · Electronic Science and Technology · M.Eng.</li>
+          </ul>
+          <ul>
+            <li>2019/07 - 2021/06 · SIGLENT Technologies Co., Ltd. (Shenzhen) · Hardware Department · Hardware Engineer</li>
+          </ul>
+          <ul>
+            <li>2015/09 - 2019/06 · Guilin University of Electronic Technology · Measurement and Control Technology and Instrumentation · B.Eng.</li>
           </ul>
         </div>
 

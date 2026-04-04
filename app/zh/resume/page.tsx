@@ -10,9 +10,18 @@ export default function ResumePageZh() {
         <h1 style={{ marginBottom: 48 }}>简历</h1>
         
         <div className="project-card" style={{ marginBottom: 32 }}>
-          <h2 style={{ marginBottom: 16 }}>教育背景</h2>
+          <h2 style={{ marginBottom: 16 }}>个人经历</h2>
           <ul>
-            <li>某大学 · 电子/计算机/相关专业 · 学位</li>
+            <li>2025/9-  至今   · 智慧星空（上海）工程技术有限公司 · 运动工程部 · 运动控制固件工程师</li>
+          </ul>
+          <ul>
+            <li>2022/9-2025/8 · 上海科技大学 · 电子科学与技术 · 工学硕士</li>
+          </ul>
+          <ul>
+            <li>2019/7-2021/6 · 深圳市鼎阳科技股份有限公司 · 硬件部 · 硬件工程师</li>
+          </ul>
+          <ul>
+            <li>2015/9-2019/6 · 桂林电子科技大学 · 测控技术与仪器 · 工学学士</li>
           </ul>
         </div>
 

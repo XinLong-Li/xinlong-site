@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPosts } from "@/lib/posts";
+import { getProjects } from "@/lib/projects";
 
 export const metadata = {
   title: "Xinlong Li - Embedded Software Engineer",
@@ -8,6 +9,7 @@ export const metadata = {
 
 export default function HomeEn() {
   const posts = getPosts("en").slice(0, 3);
+  const projects = getProjects("en").slice(0, 2);
   return (
     <>
       <section className="section hero">
@@ -56,16 +58,23 @@ export default function HomeEn() {
             View All →
           </Link>
         </div>
-        <div className="project-card" style={{ marginBottom: 16 }}>
-          <h3>6-DOF Robotic Arm Control System</h3>
-          <p>ROS-based control system for 6-axis robotic arm with inverse kinematics, trajectory planning, and force control. Supports teach pendant, visual grasping, and more.</p>
-          <div className="project-tags"><span>#ROS</span><span>#C++</span><span>#Kinematics</span></div>
-        </div>
-        <div className="project-card">
-          <h3>Mobile Robot Navigation & Localization</h3>
-          <p>Navigation system integrating laser SLAM and visual odometry for autonomous mapping, path planning, and obstacle avoidance.</p>
-          <div className="project-tags"><span>#SLAM</span><span>#ROS2</span><span>#Navigation</span></div>
-        </div>
+        {projects.map((project) => (
+          <div key={project.slug} className="project-card" style={{ marginBottom: 16 }}>
+            <h3>
+              <Link href={`/en/projects/${project.slug}`} style={{ color: "inherit", textDecoration: "none" }}>
+                {project.title}
+              </Link>
+            </h3>
+            {project.summary && <p>{project.summary}</p>}
+            {!!project.tags?.length && (
+              <div className="project-tags">
+                {project.tags.map((tag) => (
+                  <span key={tag}>#{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </section>
     </>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPosts } from "@/lib/posts";
+import { getProjects } from "@/lib/projects";
 
 export const metadata = {
   title: "李新龙 - 嵌入式软件工程师",
@@ -8,6 +9,7 @@ export const metadata = {
 
 export default function HomeZh() {
   const posts = getPosts("zh").slice(0, 3);
+  const projects = getProjects("zh").slice(0, 2);
   return (
     <>
       <section className="section hero">
@@ -56,16 +58,23 @@ export default function HomeZh() {
             查看全部 →
           </Link>
         </div>
-        <div className="project-card" style={{ marginBottom: 16 }}>
-          <h3>六轴机械臂运动控制系统</h3>
-          <p>基于 ROS 的六轴机械臂控制系统，实现逆运动学求解、轨迹规划和力控。支持示教再现、视觉抓取等功能。</p>
-          <div className="project-tags"><span>#ROS</span><span>#C++</span><span>#运动学</span></div>
-        </div>
-        <div className="project-card">
-          <h3>移动机器人导航与定位</h3>
-          <p>集成激光 SLAM 和视觉里程计的移动机器人导航系统，支持自主建图、路径规划和避障。</p>
-          <div className="project-tags"><span>#SLAM</span><span>#ROS2</span><span>#导航</span></div>
-        </div>
+        {projects.map((project) => (
+          <div key={project.slug} className="project-card" style={{ marginBottom: 16 }}>
+            <h3>
+              <Link href={`/zh/projects/${project.slug}`} style={{ color: "inherit", textDecoration: "none" }}>
+                {project.title}
+              </Link>
+            </h3>
+            {project.summary && <p>{project.summary}</p>}
+            {!!project.tags?.length && (
+              <div className="project-tags">
+                {project.tags.map((tag) => (
+                  <span key={tag}>#{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </section>
     </>
   );

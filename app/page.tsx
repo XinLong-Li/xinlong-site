@@ -20,7 +20,7 @@ export default function Root() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 20px 20px' }}>
       <div style={{ textAlign: 'center' }}>
         <h1 style={{ fontSize: '2.5rem', marginBottom: '16px', fontWeight: 700 }}>Xinlong Li</h1>
         <p style={{ fontSize: '1.1rem', marginBottom: '48px', opacity: 0.7 }}>
