@@ -4,7 +4,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { i18n, type Language } from "@/lib/i18n";
 import Link from "next/link";
-import { Sun, Moon, Globe, Menu } from "lucide-react";
+import { Sun, Moon, Menu, X } from "lucide-react";
+import LangToggle from "./LangToggle";
 
 export default function Navigation() {
   const { theme, setTheme } = useTheme();
@@ -12,10 +13,8 @@ export default function Navigation() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [langMenuOpen, setLangMenuOpen] = useState(false);
-  const langMenuRef = useRef<HTMLDivElement>(null);
-  const drawerLangMenuRef = useRef<HTMLDivElement>(null);
-  const [drawerLangMenuOpen, setDrawerLangMenuOpen] = useState(false);
+  const mobileDrawerRef = useRef<HTMLDivElement>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
 
   // 判断当前语言（优先检查 /en 前缀）
   const currentLang: Language = pathname?.startsWith("/en") ? "en" : "zh";
@@ -25,25 +24,21 @@ export default function Navigation() {
     setMounted(true);
   }, []);
 
-  // Close mobile drawer on route change
   useEffect(() => {
-    setIsMenuOpen(false);
-  }, [pathname]);
+    if (!isMenuOpen) return;
 
-  // Close language dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
-        setLangMenuOpen(false);
-      }
-      if (drawerLangMenuRef.current && !drawerLangMenuRef.current.contains(event.target as Node)) {
-        setDrawerLangMenuOpen(false);
-      }
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (mobileDrawerRef.current?.contains(target)) return;
+      if (mobileToggleRef.current?.contains(target)) return;
+
+      setIsMenuOpen(false);
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isMenuOpen]);
 
   if (!mounted) return null;
 
@@ -58,21 +53,6 @@ export default function Navigation() {
     { key: "contact", label: t.contact, href: `${langPrefix}/contact` },
   ];
 
-  // 处理语言切换 — 保留当前页面路径
-  const handleLangChange = (newLang: Language) => {
-    // 提取基础路径（去掉 /en 或 /zh 前缀）
-    let basePath = pathname || "/";
-    if (basePath.startsWith("/en/")) basePath = basePath.slice(3);
-    else if (basePath === "/en") basePath = "/";
-    else if (basePath.startsWith("/zh/")) basePath = basePath.slice(3);
-    else if (basePath === "/zh") basePath = "/";
-
-    const prefix = newLang === "en" ? "/en" : "/zh";
-    const newPath = basePath === "/" ? prefix : `${prefix}${basePath}`;
-    setLangMenuOpen(false);
-    router.push(newPath);
-  };
-
   // 处理主题切换 - 在 light 和 dark 之间切换
   const handleThemeToggle = () => {
     setTheme(theme === "light" ? "dark" : "light");
@@ -80,6 +60,7 @@ export default function Navigation() {
 
   // 回到首页
   const handleLogoClick = () => {
+    setIsMenuOpen(false);
     router.push(langPrefix);
   };
 
@@ -96,16 +77,6 @@ export default function Navigation() {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-logo" onClick={handleLogoClick}>
-          <button
-            className="icon-button mobile-toggle"
-            aria-label="Open menu"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsMenuOpen((v) => !v);
-            }}
-          >
-            <Menu size={18} />
-          </button>
           <span className="logo-text">{siteName}</span>
         </div>
 
@@ -127,49 +98,50 @@ export default function Navigation() {
             <ThemeIcon />
           </button>
 
-          <div className="dropdown" ref={langMenuRef}>
-            <button
-              className="icon-button"
-              onClick={() => setLangMenuOpen(!langMenuOpen)}
-              aria-label="Toggle language"
-            >
-              <Globe size={16} />
-            </button>
-            {langMenuOpen && (
-              <div className="dropdown-menu">
-                <button onClick={() => handleLangChange("zh")} className="dropdown-item">
-                  {t.langZh}
-                </button>
-                <button onClick={() => handleLangChange("en")} className="dropdown-item">
-                  {t.langEn}
-                </button>
-              </div>
-            )}
-          </div>
+          <LangToggle currentLang={currentLang} />
+
+          <button
+            ref={mobileToggleRef}
+            className="icon-button mobile-toggle"
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMenuOpen((v) => !v);
+            }}
+          >
+            {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </div>
 
-      {/* 移动端抽屉菜单 */}
-      <div className={`mobile-drawer ${isMenuOpen ? "open" : ""}`}>
-        <div className="drawer-header">
-          <span className="logo-text">{siteName}</span>
-          <button
-            className="icon-button"
-            onClick={() => setIsMenuOpen(false)}
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
+      {/* 移动端下拉菜单 */}
+      <div ref={mobileDrawerRef} className={`mobile-drawer ${isMenuOpen ? "open" : ""}`}>
+        <div className="mobile-drawer-top">
         </div>
-
-        {/* 抽屉菜单不显示主题和语言切换按钮 */}
 
         <div className="drawer-links">
           {navItems.map((item) => (
-            <Link key={item.key} href={item.href} className="drawer-link">
+            <Link
+              key={item.key}
+              href={item.href}
+              className="drawer-link"
+              onClick={() => setIsMenuOpen(false)}
+            >
               {item.label}
             </Link>
           ))}
+          <div className="drawer-divider" />
+          <div className="drawer-control-row">
+            <button
+              className="drawer-theme-toggle"
+              onClick={handleThemeToggle}
+              aria-label="Toggle theme"
+            >
+              <ThemeIcon />
+              <span>{theme === "light" ? t.themeLight : t.themeDark}</span>
+            </button>
+            <LangToggle currentLang={currentLang} />
+          </div>
         </div>
       </div>
 
