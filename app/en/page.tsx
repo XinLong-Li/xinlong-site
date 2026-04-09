@@ -1,6 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
+import meImage from "../../me.jpeg";
 import { getPosts } from "@/lib/posts";
 import { getProjects } from "@/lib/projects";
+import { Github, Linkedin } from "lucide-react";
 
 export const metadata = {
   title: "Xinlong Li - Embedded Software Engineer",
@@ -13,19 +16,56 @@ export default function HomeEn() {
   return (
     <>
       <section className="section hero">
-        <span className="pre">Hi, I am</span>
-        <h1>Xinlong Li</h1>
-        <h2>Embedded Software Engineer / Robot Motion Control</h2>
-        <p className="hero-desc">
-          Specializing in robot motion control, robotic arm development, and real-time embedded systems. Committed to seamlessly integrating control algorithms with hardware for high-precision, highly reliable automation solutions.
-        </p>
-        <div className="skills-grid">
-          <div className="skill-tag">C/C++</div>
-          <div className="skill-tag">ROS/ROS2</div>
-          <div className="skill-tag">Kinematics/Dynamics</div>
-          <div className="skill-tag">STM32/ARM</div>
-          <div className="skill-tag">RTOS</div>
-          <div className="skill-tag">PID/MPC Control</div>
+        <div className="hero-layout">
+          <div className="hero-copy">
+            <span className="pre">Hi, I am</span>
+            <h1>Xinlong Li</h1>
+            <h2>Embedded Software Engineer / Robot Motion Control</h2>
+            <p className="hero-desc">
+              Specializing in robot motion control, robotic arm development, and real-time embedded systems. Committed to seamlessly integrating control algorithms with hardware for high-precision, highly reliable automation solutions.
+            </p>
+            <div className="hero-socials">
+              <a
+                className="social-link"
+                href="https://github.com/XinLong-Li"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="GitHub"
+              >
+                <Github size={18} />
+                <span>GitHub</span>
+              </a>
+              <a
+                className="social-link"
+                href="https://www.linkedin.com/in/xin-long-li/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="LinkedIn"
+              >
+                <Linkedin size={18} />
+                <span>LinkedIn</span>
+              </a>
+            </div>
+            <div className="skills-grid">
+              <div className="skill-tag">C/C++</div>
+              <div className="skill-tag">ROS/ROS2</div>
+              <div className="skill-tag">Kinematics/Dynamics</div>
+              <div className="skill-tag">STM32/ARM</div>
+              <div className="skill-tag">RTOS</div>
+              <div className="skill-tag">PID/MPC Control</div>
+            </div>
+          </div>
+
+          <div className="hero-portrait-wrap">
+            <Image
+              src={meImage}
+              alt="Xinlong Li portrait"
+              width={360}
+              height={360}
+              className="hero-portrait"
+              priority
+            />
+          </div>
         </div>
       </section>
 

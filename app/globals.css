@@ -602,6 +602,75 @@ html.dark .drawer-theme-toggle {
 /* 首页科技风样式 */
 .section { padding: 80px 0; }
 .hero { min-height: 60vh; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+.hero-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.85fr);
+  gap: 32px;
+  align-items: center;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.hero-portrait-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.hero-portrait {
+  width: min(320px, 78vw);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 6px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.14);
+  background: #fff;
+}
+
+html.dark .hero-portrait {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.hero-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a1a1a;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.social-link:hover {
+  transform: translateY(-1px);
+  border-color: #9ca3af;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+html.dark .social-link {
+  background: rgba(42, 42, 42, 0.92);
+  border-color: #444;
+  color: #e6f1ff;
+}
+
+html.dark .social-link:hover {
+  border-color: #666;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
 .hero .pre { 
   color: #666;
   font-family: monospace;
@@ -740,6 +809,18 @@ html.dark .btn:hover {
 
 @media (max-width: 768px) {
   .section { padding: 48px 0; }
+  .hero-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .hero-portrait-wrap {
+    order: -1;
+  }
+
+  .hero-portrait {
+    width: min(240px, 70vw);
+  }
 }
 
 /* 内容列表基础样式 */

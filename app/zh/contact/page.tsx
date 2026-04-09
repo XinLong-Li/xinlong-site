@@ -10,7 +10,7 @@ export default function ContactPageZh() {
         <div className="contact-box">
           <h1 style={{ marginBottom: 24 }}>联系我</h1>
           <p style={{ color: "#666", marginBottom: 32, lineHeight: 1.6 }}>
-            欢迎联系我，讨论合作、演讲邀请或任何想法
+            欢迎联系我，讨论合作或任何想法
           </p>
           
           <div style={{ marginBottom: 32 }}>
@@ -20,15 +20,20 @@ export default function ContactPageZh() {
                 li_xin_long@foxmail.com
               </a>
             </p>
+            <p style={{ marginBottom: 12 }}>
+              <strong>GitHub：</strong>
+              <a href="https://github.com/XinLong-Li" target="_blank" rel="noreferrer" style={{ color: "#f97316", marginLeft: 8 }}>
+                github.com/XinLong-Li
+              </a>
+            </p>
             <p>
-              <strong>社交媒体：</strong>
-              <span style={{ color: "#666", marginLeft: 8 }}>GitHub / LinkedIn / Twitter</span>
+              <strong>LinkedIn：</strong>
+              <a href="https://www.linkedin.com/in/xin-long-li/" target="_blank" rel="noreferrer" style={{ color: "#f97316", marginLeft: 8 }}>
+                linkedin.com/in/xin-long-li
+              </a>
             </p>
           </div>
 
-          <p style={{ color: "#999", fontSize: "0.9rem" }}>
-            后续可加入表单或订阅功能，便于快速留言与获取更新
-          </p>
         </div>
       </section>
     </main>

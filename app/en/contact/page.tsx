@@ -10,7 +10,7 @@ export default function EnContactPage() {
         <div className="contact-box">
           <h1 style={{ marginBottom: 24 }}>Contact Me</h1>
           <p style={{ color: "#666", marginBottom: 32, lineHeight: 1.6 }}>
-            Feel free to reach out for collaboration, speaking, or any ideas
+            Feel free to reach out for collaboration or any ideas
           </p>
           
           <div style={{ marginBottom: 32 }}>
@@ -20,15 +20,20 @@ export default function EnContactPage() {
                 li_xin_long@foxmail.com
               </a>
             </p>
+            <p style={{ marginBottom: 12 }}>
+              <strong>GitHub:</strong>
+              <a href="https://github.com/XinLong-Li" target="_blank" rel="noreferrer" style={{ color: "#f97316", marginLeft: 8 }}>
+                github.com/XinLong-Li
+              </a>
+            </p>
             <p>
-              <strong>Social Media:</strong>
-              <span style={{ color: "#666", marginLeft: 8 }}>GitHub / LinkedIn / Twitter</span>
+              <strong>LinkedIn:</strong>
+              <a href="https://www.linkedin.com/in/xin-long-li/" target="_blank" rel="noreferrer" style={{ color: "#f97316", marginLeft: 8 }}>
+                linkedin.com/in/xin-long-li
+              </a>
             </p>
           </div>
 
-          <p style={{ color: "#999", fontSize: "0.9rem" }}>
-            You can add a form or newsletter sign-up later for quick feedback
-          </p>
         </div>
       </section>
     </main>
