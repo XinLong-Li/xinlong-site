@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    |𝑥| —— 绝对值 / 范数记号，同时编码姓名首字母（李新龙 → LXL，
+    小写 lxl 在无衬线体里即呈现为 |x|）。
+
+    全部由几何图元手工构造，不使用任何文字元素：文字依赖渲染端的系统
+    字体，不同平台结果不一致。矢量路径保证任何环境下渲染完全一致。
+
+    几何：竖线上下各高出 x 一截（数学排版惯例）；x 为斜体，剪切量 3.2
+    使字形明显倾斜、不误读为乘号 ×。字身按 shear/2 左移以抵消剪切造成的
+    右偏，保证视觉重心仍在画布中央、两侧留白相等（各 3.35 单位）。
+
+    笔画粗细 2.8：16px 渲染时约 1.4px，是清晰度的下限，不可再细。
+    颜色取站点品牌值 —— 深色 #0f1216 与青色 #64ffda 与
+    app/[lang]/opengraph-image.tsx 保持一致，对比度约 13:1。
+  -->
+  <rect width="32" height="32" rx="7" fill="#0f1216"/>
+  <rect x="4" y="5.8" width="2.8" height="20.4" fill="#64ffda"/>
+  <rect x="25.2" y="5.8" width="2.8" height="20.4" fill="#64ffda"/>
+  <path d="M11.1 20.5 L20.9 11.5" stroke="#64ffda" stroke-width="2.8" fill="none"/>
+  <path d="M14.3 11.5 L17.7 20.5" stroke="#64ffda" stroke-width="2.8" fill="none"/>
+</svg>
