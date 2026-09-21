@@ -156,11 +156,20 @@ SESSION_SECRET="<openssl rand -hex 32>"
 ```bash
 node -e 'const{scryptSync,randomBytes}=require("node:crypto");const s=randomBytes(16);const k=scryptSync(process.argv[1],s,64);console.log(s.toString("hex")+":"+k.toString("hex"))' '你的密码'
 ```
-写完必须 `pm2 restart xinlong-site --update-env`——**`--update-env` 不能漏**，
-PM2 的环境在启动时快照，漏掉的症状是"改了 .env 但行为没变"。
+写完重启即可：`pm2 restart xinlong-site`。
+
+**关于 `--update-env`**：对 `.env` 文件里的值**不需要**——Next 在进程启动时
+自己会读项目根目录的 `.env`（`next start` 内置了这一步），PM2 的环境快照
+与它无关。实测：不导出任何 shell 变量、只靠 `.env`，登录正常；把 `.env`
+移走后重启，登录立即失效并在服务端日志打出"未配置"。
+只有当你把变量 `export` 在 SSH 会话里时，才需要 `--update-env` 让 PM2 捡到。
 
 缺 `ADMIN_PASSWORD_HASH` 时登录会失败，而且**看起来就像密码输错了**。
-服务端日志里"未配置"和"密码不匹配"是两条不同的消息，先看日志再去怀疑密码。
+服务端日志里"未配置"和"密码不匹配"是两条不同的消息，先看日志再去怀疑密码：
+
+```
+[auth] ADMIN_PASSWORD_HASH 未配置，登录不可能成功
+```
 
 **12. 局域网调试要用 `INSECURE_COOKIES=1`**
 会话 cookie 在 `NODE_ENV=production` 下带 `Secure`。localhost 是安全上下文
