@@ -126,9 +126,21 @@ export default function Navigation({ lang }: { lang: Lang }) {
 
   return (
     <nav
+      /*
+       * 底部刻意**不用** border-b。
+       *
+       * 一条横贯整屏的 1px 硬线会在视觉上把导航栏和正文切成两半，而页面
+       * 背后是一张连续的 bg-glow 径向渐变——两者直接打架。
+       *
+       * 改法：导航栏自身保持半透明 + 毛玻璃，再往下挂一段 40px 的渐变遮罩
+       * （after:），由导航栏底色渐隐到全透明。内容滚过时是逐渐淡出，而不是
+       * 在某个像素行被一刀切断。毛玻璃负责"看不清"，渐变负责"不突兀"。
+       */
       className={cn(
         "fixed inset-x-0 top-0 z-[100] h-16",
-        "border-b border-border bg-surface/80 backdrop-blur-xl",
+        "bg-surface/75 backdrop-blur-xl",
+        "after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-10",
+        "after:bg-gradient-to-b after:from-surface/75 after:to-transparent",
       )}
     >
       <div className="mx-auto flex h-full max-w-5xl items-center gap-4 px-5">

@@ -4,3 +4,8 @@ node_modules
 .DS_Store
 logs
 *.tsbuildinfo
+
+# 网页端发布的帖子。刻意不进 git —— 它必须能扛过部署流程里的
+# `git reset --hard`，而那条命令只重置已跟踪文件。一旦误提交，
+# 这个保证就静默失效了：从后台删掉一篇帖子后，下次部署会把它复活。
+content/runtime
