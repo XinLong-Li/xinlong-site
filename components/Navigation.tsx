@@ -105,8 +105,12 @@ export default function Navigation({ lang }: { lang: Lang }) {
 
   const handleThemeToggle = () => setTheme(isDark ? "light" : "dark");
 
+  // 随笔紧跟博客（都是文字内容，相邻更自然）；/admin 刻意不在此列——
+  // 它的消费者只有站主一个，而导航栏是给访客看的，多一个入口就是把
+  // 攻击面主动写在首页上。
   const navItems = [
     { key: "blog", label: t.nav.blog, href: `/${lang}/blog` },
+    { key: "moments", label: t.nav.moments, href: `/${lang}/moments` },
     { key: "projects", label: t.nav.projects, href: `/${lang}/projects` },
     { key: "resume", label: t.nav.resume, href: `/${lang}/resume` },
     { key: "contact", label: t.nav.contact, href: `/${lang}/contact` },

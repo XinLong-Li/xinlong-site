@@ -36,17 +36,28 @@ app/
   [lang]/              根布局与全部页面（lang ∈ zh | en）
     layout.tsx         根布局：<html lang>、主题 Provider、导航、页脚
     page.tsx           首页
+    blog/ moments/ projects/   三类内容
+    admin/             网页端发帖后台（登录 + 编辑器 + 已发布列表）
     [...rest]/         兜底路由，触发 404
-    fonts/            自托管字体
+    fonts/             自托管字体
   api/health/          健康检查（供 uptime 监控使用）
   globals.css          设计令牌 + 基础层
 proxy.ts               根路径语言协商与重定向
 components/            UI 组件
 lib/
   i18n.ts              类型化字典（两种语言键不一致会在编译期报错）
-  content.ts           posts / projects 两个集合的统一读取
-content/{posts,projects}/{zh,en}/*.md
+  content.ts           posts / projects / moments 的统一读写
+  auth.ts              密码校验、无状态会话、登录限速
+  slug.ts              slug 生成（中文标题回退到内容哈希）
+
+content/
+  posts/ projects/     仓库策展内容，git 跟踪，**只读**
+  runtime/             网页端发布的内容，gitignored，可改可删
 ```
+
+两类内容的读取规则：**slug 冲突时 git 版本优先**。管理界面把仓库内容
+标为"仓库收录"并转为只读——删掉它下次 `git reset --hard` 会复活，编辑它
+下次部署会被静默回滚。
 
 ## 设计令牌
 
@@ -113,3 +124,65 @@ Tailwind 生成的 CSS 中 `.hidden` 排在 `.inline-flex` 之前，同等特异
 
 可行的真正修复是等待 gray-matter 支持 js-yaml 4，或改用其他 frontmatter
 解析库。
+
+**9. 网页端发帖：缓存失效的顺序不能反**
+内容有两层缓存：`lib/content.ts` 里的模块级缓存，和 Next 的 ISR 路由缓存。
+写入后必须**先 `clearCache()` 再 `revalidatePath()`**：
+
+```ts
+collection.clearCache();
+revalidatePath(`/${lang}/blog`);
+revalidatePath(`/${lang}/blog/${slug}`);   // 删除时也必须，否则留下软 404
+```
+
+`revalidatePath` 只是把路径**标记为过期**，真正的重新渲染在下一次请求。
+顺序反了的话，落在两者之间的那次请求会把旧列表重新写回 ISR 缓存并附上
+新的 60 秒计时器——"发布了但列表页还是旧的"，且会稳定复现。
+
+删除时对详情页的 revalidate 尤其不能省：ISR 不会因为源文件消失而失效，
+不写那行，被删的文章会以 200 继续对外服务（软 404，会被搜索引擎收录）。
+
+**10. `content/runtime/` 必须保持被 gitignore**
+网页端发布的帖子写在这里。它必须能扛过部署流程里的 `git reset --hard`
+——那条命令只重置**已跟踪**文件。一旦有人 `git add -A` 把它提交进去，
+这个保证就静默失效了。用 `git check-ignore -v content/runtime/...` 正面确认。
+
+**11. 服务器必须先配好 `.env`，否则登录永远失败**
+```
+ADMIN_PASSWORD_HASH="<salt-hex>:<scrypt-key-hex>"
+SESSION_SECRET="<openssl rand -hex 32>"
+```
+生成哈希：
+```bash
+node -e 'const{scryptSync,randomBytes}=require("node:crypto");const s=randomBytes(16);const k=scryptSync(process.argv[1],s,64);console.log(s.toString("hex")+":"+k.toString("hex"))' '你的密码'
+```
+写完必须 `pm2 restart xinlong-site --update-env`——**`--update-env` 不能漏**，
+PM2 的环境在启动时快照，漏掉的症状是"改了 .env 但行为没变"。
+
+缺 `ADMIN_PASSWORD_HASH` 时登录会失败，而且**看起来就像密码输错了**。
+服务端日志里"未配置"和"密码不匹配"是两条不同的消息，先看日志再去怀疑密码。
+
+**12. 局域网调试要用 `INSECURE_COOKIES=1`**
+会话 cookie 在 `NODE_ENV=production` 下带 `Secure`。localhost 是安全上下文
+所以不受影响，但**局域网 IP 不是**——用 `npm start` 后从手机访问
+`http://192.168.x.x:3000` 时 cookie 会被浏览器丢弃，表现为"登录了但一刷新
+又回到登录页"。那种场景设 `INSECURE_COOKIES=1`。
+
+**13. `Buffer` 不能直接传给 `node:crypto`**
+tsconfig 的 `lib` 同时含 `dom` 与 Node types，两套 lib 各自声明了一份
+`Uint8Array`（DOM 那份的 `entries()` 返回 `IterableIterator`，ES 那份返回
+TypeScript 5.6 引入的 `ArrayIterator`）。`Buffer` 继承 DOM 那份，而
+`node:crypto` 的签名期望另一份，于是 `Buffer` 不满足 `BinaryLike`。
+`skipLibCheck` 盖不住——那是赋值兼容性，不是 lib 内部错误。
+`lib/auth.ts` 里用 `bytes()` 转成干净的 `Uint8Array` 消解。
+
+**14. `experimental.serverActions.allowedOrigins` 不是安全加固**
+它**放宽**校验，允许本会被拒绝的 origin。加它是因为 nginx 若没设
+`proxy_set_header Host $host`，会出现 origin 与 host 不一致，Next 会拒绝
+**所有** Server Action，表现为"点了发布没反应"且错误只在服务端日志里。
+真正的鉴权边界在每个 action 里的 `requireAuth()`。
+
+**15. 网页端发布的内容没有备份**
+`content/runtime/` 只存在于那一台服务器上。定期 `scp -r <APP_DIR>/content/runtime ./backup/`。
+这是"发布不依赖部署链路"换来的代价——部署链路的 `git fetch` 会间歇性
+被 TLS 重置（`GnuTLS recv error`），所以发布必须绕开它。

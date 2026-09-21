@@ -9,14 +9,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // 每种语言下：静态页 + 全部文章 + 全部项目
   return LANGS.flatMap((lang) => {
-    const staticPages = ["", "/blog", "/projects", "/resume", "/contact"].map(
-      (path) => ({
-        url: `${SITE_URL}/${lang}${path}`,
-        lastModified: now,
-        changeFrequency: "monthly" as const,
-        priority: path === "" ? 1 : 0.8,
-      }),
-    );
+    // 不含 /admin —— 它同时被 X-Robots-Tag 和 robots.ts 排除，
+    // 出现在 sitemap 里等于自相矛盾。
+    const staticPages = [
+      "",
+      "/blog",
+      "/moments",
+      "/projects",
+      "/resume",
+      "/contact",
+    ].map((path) => ({
+      url: `${SITE_URL}/${lang}${path}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: path === "" ? 1 : 0.8,
+    }));
+
+    // moments 只需上面那个列表页 —— 它刻意不做详情页
+    // （见 app/[lang]/moments/page.tsx 的说明）。
 
     const postPages = posts.getItems(lang).map((post) => ({
       url: `${SITE_URL}/${lang}/blog/${post.slug}`,

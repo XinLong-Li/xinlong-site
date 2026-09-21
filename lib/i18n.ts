@@ -22,7 +22,13 @@ export type ResumeEntry = {
 type Dictionary = {
   siteName: string;
   siteDescription: string;
-  nav: { blog: string; projects: string; resume: string; contact: string };
+  nav: {
+    blog: string;
+    moments: string;
+    projects: string;
+    resume: string;
+    contact: string;
+  };
   theme: { light: string; dark: string; toggle: string };
   langSwitch: string;
   common: {
@@ -42,7 +48,39 @@ type Dictionary = {
     featuredProjects: string;
   };
   blog: { title: string; subtitle: string };
+  moments: { title: string; subtitle: string; empty: string };
   projects: { title: string; subtitle: string };
+  admin: {
+    login: string;
+    password: string;
+    signIn: string;
+    signOut: string;
+    wrongPassword: string;
+    lockedOut: string;
+    title: string;
+    subtitle: string;
+    kindPost: string;
+    kindMoment: string;
+    fieldTitle: string;
+    fieldTags: string;
+    fieldBody: string;
+    fieldBodyMoment: string;
+    publish: string;
+    save: string;
+    cancel: string;
+    edit: string;
+    remove: string;
+    confirmRemove: string;
+    published: string;
+    repoManaged: string;
+    repoManagedHint: string;
+    empty: string;
+    tagsHint: string;
+    saved: string;
+    errEmpty: string;
+    errSlug: string;
+    errNotFound: string;
+  };
   resume: {
     title: string;
     subtitle: string;
@@ -79,7 +117,13 @@ export const dictionaries: Record<Lang, Dictionary> = {
   zh: {
     siteName: "李新龙",
     siteDescription: "专注于机器人运动控制与嵌入式系统开发",
-    nav: { blog: "博客", projects: "项目", resume: "简历", contact: "联系" },
+    nav: {
+      blog: "博客",
+      moments: "随笔",
+      projects: "项目",
+      resume: "简历",
+      contact: "联系",
+    },
     theme: { light: "浅色", dark: "深色", toggle: "切换主题" },
     langSwitch: "Switch to English",
     common: {
@@ -106,9 +150,45 @@ export const dictionaries: Record<Lang, Dictionary> = {
       featuredProjects: "精选项目",
     },
     blog: { title: "博客", subtitle: "分享技术经验、学习笔记和思考" },
+    moments: {
+      title: "随笔",
+      subtitle: "随手记录的想法与进展",
+      empty: "还没有随笔。",
+    },
     projects: {
       title: "项目",
       subtitle: "机器人运动控制与嵌入式系统开发项目",
+    },
+    admin: {
+      login: "登录",
+      password: "密码",
+      signIn: "登录",
+      signOut: "退出登录",
+      wrongPassword: "密码不正确。",
+      lockedOut: "尝试次数过多，请 {minutes} 分钟后再试。",
+      title: "发布",
+      subtitle: "写点东西。发布后立刻生效，不需要重新部署。",
+      kindPost: "长文",
+      kindMoment: "随笔",
+      fieldTitle: "标题",
+      fieldTags: "标签",
+      fieldBody: "正文（支持 Markdown）",
+      fieldBodyMoment: "写点什么…",
+      publish: "发布",
+      save: "保存",
+      cancel: "取消",
+      edit: "编辑",
+      remove: "删除",
+      confirmRemove: "确定删除？此操作无法撤销。",
+      published: "本站发布",
+      repoManaged: "仓库收录",
+      repoManagedHint: "这些文章由 git 管理，请在仓库里修改。",
+      empty: "还没有发布过内容。",
+      tagsHint: "用逗号分隔，例如：随笔, 控制",
+      saved: "已保存：",
+      errEmpty: "标题和正文都不能为空。",
+      errSlug: "地址标识不合法，操作已取消。",
+      errNotFound: "找不到这篇内容，可能已被删除。",
     },
     resume: {
       title: "简历",
@@ -168,6 +248,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       "Embedded software engineer specializing in robot motion control",
     nav: {
       blog: "Blog",
+      moments: "Moments",
       projects: "Projects",
       resume: "Resume",
       contact: "Contact",
@@ -201,9 +282,45 @@ export const dictionaries: Record<Lang, Dictionary> = {
       title: "Blog",
       subtitle: "Sharing technical experience, learning notes and thoughts",
     },
+    moments: {
+      title: "Moments",
+      subtitle: "Short notes and progress, posted as they happen",
+      empty: "No moments yet.",
+    },
     projects: {
       title: "Projects",
       subtitle: "Robot motion control and embedded systems development projects",
+    },
+    admin: {
+      login: "Sign in",
+      password: "Password",
+      signIn: "Sign in",
+      signOut: "Sign out",
+      wrongPassword: "Incorrect password.",
+      lockedOut: "Too many attempts. Try again in {minutes} minutes.",
+      title: "Publish",
+      subtitle: "Write something. It goes live immediately, no redeploy.",
+      kindPost: "Article",
+      kindMoment: "Moment",
+      fieldTitle: "Title",
+      fieldTags: "Tags",
+      fieldBody: "Body (Markdown supported)",
+      fieldBodyMoment: "What's on your mind…",
+      publish: "Publish",
+      save: "Save",
+      cancel: "Cancel",
+      edit: "Edit",
+      remove: "Delete",
+      confirmRemove: "Delete? This cannot be undone.",
+      published: "Published here",
+      repoManaged: "In repository",
+      repoManagedHint: "These are managed by git. Edit them in the repository.",
+      empty: "Nothing published yet.",
+      tagsHint: "Comma separated, e.g. notes, control",
+      saved: "Saved:",
+      errEmpty: "Title and body cannot be empty.",
+      errSlug: "Invalid slug, nothing was changed.",
+      errNotFound: "That item no longer exists.",
     },
     resume: {
       title: "Resume",
