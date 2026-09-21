@@ -107,7 +107,9 @@ export default async function LangLayout({
               组件会把它整份塞进浏览器包。两个组件各自按 lang 取所需部分。 */}
           <Navigation lang={lang} />
           {/* 各页面自行包 <Container>，横向尺度由它单点定义 */}
-          <main>{children}</main>
+          {/* flex-1 让 main 吃掉 body 纵向弹性容器里的剩余空间，页脚因此
+              永远贴在视口底部，不被内容长度左右。 */}
+          <main className="flex-1">{children}</main>
           <Footer lang={lang} />
         </Providers>
       </body>
