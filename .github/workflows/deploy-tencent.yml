@@ -135,6 +135,7 @@ jobs:
             echo "[6/9] write .env (hash=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) session=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no) token=$([ -n "${GITHUB_SYNC_TOKEN:-}" ] && echo yes || echo no))"
 
             if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
+              echo "  [6a] both required secrets present"
               # Subshell umask so the file is created 0600 directly, with no
               # window where it is world-readable.
               #
@@ -149,13 +150,16 @@ jobs:
                     printf '%s\n' "GITHUB_SYNC_TOKEN=\"$GITHUB_SYNC_TOKEN\""
                   fi
                 } > .env )
+              echo "  [6b] .env written"
               chmod 600 .env
+              echo "  [6c] chmod 600 ok"
 
               # Self-check: required keys must be present, else fail now rather
               # than leave a broken .env behind.
               for k in ADMIN_PASSWORD_HASH SESSION_SECRET; do
                 grep -q "^$k=" .env || { echo "ERROR: .env is missing $k" >&2; exit 1; }
               done
+              echo "  [6d] both keys present"
 
               if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
                 echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes, incl. GITHUB_SYNC_TOKEN)"
