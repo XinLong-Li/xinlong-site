@@ -30,6 +30,8 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           APP_DIR: ${{ secrets.APP_DIR }}
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
           set -e
           for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
@@ -38,7 +40,19 @@ jobs:
               exit 1
             fi
           done
-          echo "✅ All required secrets present"
+          echo "✅ Deploy secrets present"
+
+          # 这两个是**可选**的：都配了才会在服务器上生成 .env。
+          have_hash=$([ -n "$ADMIN_PASSWORD_HASH" ] && echo yes || echo no)
+          have_secret=$([ -n "$SESSION_SECRET" ] && echo yes || echo no)
+          if [ "$have_hash" = yes ] && [ "$have_secret" = yes ]; then
+            echo "✅ ADMIN_PASSWORD_HASH / SESSION_SECRET 已配置 —— 部署时会写入 .env"
+          elif [ "$have_hash" = no ] && [ "$have_secret" = no ]; then
+            echo "· ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置 —— 部署会跳过 .env（后台登录不可用）"
+          else
+            echo "❌ 这两个必须同时配置或同时不配置（当前 hash=$have_hash secret=$have_secret）" >&2
+            exit 1
+          fi
 
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.0
@@ -48,6 +62,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script_stop: true
+          # 把可选的凭据传进远程脚本的环境。
+          # 用变量而非字面值，所以脚本正文里没有可泄露的内容
+          #（GitHub 也会把日志里的这些值自动打码成 ***）。
+          envs: ADMIN_PASSWORD_HASH,SESSION_SECRET
           script: |
             set -e
             cd ${{ secrets.APP_DIR }}
@@ -59,6 +77,33 @@ jobs:
             git reset --hard origin/main
             # Ensure logs directory exists for PM2
             mkdir -p logs
+
+            # ---------------------------------------------------------------
+            # 由 GitHub Secrets 声明式地生成 .env
+            #
+            # 只有两个 Secret 都配了才写；否则完全不动（保持这个功能可选）。
+            #
+            # .env 被 .gitignore 覆盖，所以上面的 `git reset --hard` 不会碰它。
+            #
+            # 注意：这个文件由本工作流**独家拥有**。手工往 .env 里加别的变量，
+            # 下次部署会被这行覆盖 —— 要加就加在这里。
+            # ---------------------------------------------------------------
+            if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
+              # 用子 shell 限定 umask，避免影响后续命令；
+              # 这样文件创建时权限就是 600，不存在"先建后改"的窗口期。
+              ( umask 077; printf 'ADMIN_PASSWORD_HASH="%s"\nSESSION_SECRET="%s"\n' \
+                  "$ADMIN_PASSWORD_HASH" "$SESSION_SECRET" > .env )
+              chmod 600 .env
+
+              # 写完自校验：确认两个键都在，否则立刻失败而不是留个坏的 .env
+              for k in ADMIN_PASSWORD_HASH SESSION_SECRET; do
+                grep -q "^$k=" .env || { echo "❌ .env 缺少 $k" >&2; exit 1; }
+              done
+              echo "✓ .env written from GitHub Secrets ($(wc -c < .env | tr -d ' ') bytes)"
+            else
+              echo "· ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置，跳过 .env"
+            fi
+
             # Install Node (optional if already installed)
             if ! command -v node >/dev/null 2>&1; then
               echo "Node not found; please install Node 20 manually or via nvm"
