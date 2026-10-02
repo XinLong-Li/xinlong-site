@@ -93,7 +93,10 @@ export default async function AdminPage({
 
   // 仓库收录的内容只读。删掉它下一次 `git reset --hard` 会复活；编辑它
   // 下一次部署会被静默回滚——"我改了但它变回去了"比不提供功能更糟。
-  const repoEntries = posts.getItems(lang);
+  //
+  // 用 listGit 而不是 getItems：后者是 git + runtime 的并集，会把云端刚
+  // 发布的文章也算进这一栏，导致同一篇在两个列表里各出现一次。
+  const repoEntries = posts.listGit(lang);
 
   const errorText =
     error === "empty" ? t.admin.errEmpty

@@ -164,6 +164,33 @@ function createCollection(dirName: string) {
   }
 
   /**
+   * 管理界面用：**只看 git 跟踪的目录**。
+   *
+   * 不能用 getItems 代替 —— 那个是 git + runtime 的并集，会把云端刚发布的
+   * 文章也算进来，导致同一篇在"本站发布"和"仓库收录"里各出现一次。
+   *
+   * 注意 readItem 会先查 git 再查 runtime，所以这里显式拼接 git 目录的路径，
+   * 绕开那个回退，保证只读到真正被 git 跟踪的文件。
+   */
+  function listGit(lang: Lang): ContentItem[] {
+    const dir = gitLangDir(lang);
+    return listDir(dir)
+      .map((slug) => {
+        const full = path.join(dir, `${slug}.md`);
+        const { data } = matter(fs.readFileSync(full, "utf8"));
+        return {
+          slug,
+          title: data.title || slug,
+          date: data.date || "1970-01-01",
+          summary: data.summary || "",
+          tags: data.tags || [],
+          lang,
+        } satisfies ContentItem;
+      })
+      .sort((a, b) => (a.date > b.date ? -1 : 1));
+  }
+
+  /**
    * 判断某个 slug 是否已被仓库策展内容占用。
    * 管理界面据此把这类条目标成"仓库收录"并转为只读。
    */
@@ -239,6 +266,7 @@ function createCollection(dirName: string) {
     getDetail,
     getItemsWithHtml,
     listRuntime,
+    listGit,
     readRuntime,
     isInGit,
     writeRuntime,
