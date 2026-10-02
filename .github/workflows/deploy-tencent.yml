@@ -56,26 +56,41 @@ jobs:
 
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.0
+        # ⚠️ 这个 env: 块不能删。
+        #
+        # `with.envs` 只声明「要转发哪些变量名」，**值必须由步骤的 env: 提供**。
+        # 少了它，这两个变量在 action 容器里根本不存在，envs 会转发空值 ——
+        # 即使 Secrets 配好了，服务器上也拿到不到任何东西。
+        # （最初就是漏了这块，导致脚本在 git reset 之后静默退出。）
+        env:
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script_stop: true
-          # 把可选的凭据传进远程脚本的环境。
-          # 用变量而非字面值，所以脚本正文里没有可泄露的内容
-          #（GitHub 也会把日志里的这些值自动打码成 ***）。
+          # 用变量而非字面值，脚本正文里没有可泄露的内容。
+          # GitHub 也会把日志里的这些值自动打码成 ***。
           envs: ADMIN_PASSWORD_HASH,SESSION_SECRET
           script: |
             set -e
+            echo "[1/8] cd to app dir"
             cd ${{ secrets.APP_DIR }}
+
             # Ensure repo exists; clone if missing
             if [ ! -d .git ]; then
               git clone https://github.com/${{ github.repository }} .
             fi
+
+            echo "[2/8] git fetch"
             git fetch --all
+
+            echo "[3/8] git reset"
             git reset --hard origin/main
-            # Ensure logs directory exists for PM2
+
+            echo "[4/8] mkdir logs"
             mkdir -p logs
 
             # ---------------------------------------------------------------
@@ -85,39 +100,42 @@ jobs:
             #
             # .env 被 .gitignore 覆盖，所以上面的 `git reset --hard` 不会碰它。
             #
-            # 注意：这个文件由本工作流**独家拥有**。手工往 .env 里加别的变量，
+            # 注意：这个文件由本工作流独家拥有。手工往 .env 里加别的变量，
             # 下次部署会被这行覆盖 —— 要加就加在这里。
             # ---------------------------------------------------------------
+            echo "[5/8] write .env (hash_set=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) secret_set=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no))"
+
             if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
               # 用子 shell 限定 umask，避免影响后续命令；
               # 这样文件创建时权限就是 600，不存在"先建后改"的窗口期。
-              ( umask 077; printf 'ADMIN_PASSWORD_HASH="%s"\nSESSION_SECRET="%s"\n' \
-                  "$ADMIN_PASSWORD_HASH" "$SESSION_SECRET" > .env )
+              ( umask 077; printf '%s\n%s\n' \
+                  "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
+                  "SESSION_SECRET=\"$SESSION_SECRET\"" > .env )
               chmod 600 .env
 
               # 写完自校验：确认两个键都在，否则立刻失败而不是留个坏的 .env
               for k in ADMIN_PASSWORD_HASH SESSION_SECRET; do
-                grep -q "^$k=" .env || { echo "❌ .env 缺少 $k" >&2; exit 1; }
+                grep -q "^$k=" .env || { echo "ERROR: .env 缺少 $k" >&2; exit 1; }
               done
-              echo "✓ .env written from GitHub Secrets ($(wc -c < .env | tr -d ' ') bytes)"
+              echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes)"
             else
-              echo "· ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置，跳过 .env"
+              echo "SKIP: ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置，不动 .env"
             fi
 
-            # Install Node (optional if already installed)
-            if ! command -v node >/dev/null 2>&1; then
-              echo "Node not found; please install Node 20 manually or via nvm"
-            fi
-            # Install deps & build
+            echo "[6/8] npm ci"
             npm ci
+
+            echo "[7/8] npm run build"
             npm run build
-            # Ensure PM2 is available
+
+            echo "[8/8] pm2 restart"
             if ! command -v pm2 >/dev/null 2>&1; then
               npm i -g pm2
             fi
-            # Start or restart with PM2 using ecosystem config
             pm2 startOrRestart ecosystem.config.js --env production
             pm2 save
+
+            echo "DONE"
 
       - name: Notify
         run: echo "Deployment triggered to Tencent Cloud"
