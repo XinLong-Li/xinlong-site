@@ -30,6 +30,53 @@ export type ContentDetail = ContentItem & { contentHtml: string };
  * 它，下一次部署的 `git reset --hard` 会把它复活；编辑它则会被静默回滚。
  * 分区之后规则是干净的——runtime 目录里可改可删，git 里的只读。
  */
+/** 手工遍历 mdast 树，避免为十来行逻辑再引入 unist-util-visit。 */
+type MdNode = { type: string; depth?: number; children?: MdNode[] };
+
+function walkMd(node: MdNode, fn: (n: MdNode) => void): void {
+  fn(node);
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) walkMd(child, fn);
+  }
+}
+
+/**
+ * 把正文标题下移到 h2 起步。
+ *
+ * 文章标题本身就是页面的 `<h1>`，正文里再出现 `#` 就有两个 h1：语义上是错的，
+ * 而且 `components/Prose.tsx` 只给 h2/h3/h4 写了样式，正文里的 `#` 会退化成
+ * 浏览器默认样式 —— 看起来像"样式坏了"。
+ *
+ * 规则是**看这篇文档最浅的标题有多浅**，只补到 h2 为止：
+ *
+ *   正文从 `#` 开始（从笔记软件粘过来的常见情况）→ 整体下沉一级
+ *   正文从 `##` 开始（仓库里已有的约定）        → 一级都不动
+ *
+ * 所以这不是"统一改版"：已有内容的渲染结果逐字节不变（6 个项目文件最浅都是
+ * `##`，移位量为 0）。只有真的出现 h1 的文档才会被移动。
+ */
+function normalizeHeadings() {
+  return (tree: MdNode): void => {
+    let shallowest = Number.POSITIVE_INFINITY;
+    walkMd(tree, (n) => {
+      if (n.type === "heading" && typeof n.depth === "number") {
+        shallowest = Math.min(shallowest, n.depth);
+      }
+    });
+
+    if (!Number.isFinite(shallowest)) return;
+    const shift = Math.max(0, 2 - shallowest);
+    if (shift === 0) return;
+
+    walkMd(tree, (n) => {
+      // 封顶在 h6：CommonMark 只有六级，再深就只能压平了。
+      if (n.type === "heading" && typeof n.depth === "number") {
+        n.depth = Math.min(6, n.depth + shift);
+      }
+    });
+  };
+}
+
 function createCollection(dirName: string) {
   const baseDir = path.join(process.cwd(), "content", dirName);
   const runtimeBase = path.join(process.cwd(), "content", "runtime", dirName);
@@ -129,7 +176,7 @@ function createCollection(dirName: string) {
    * 来源 —— 仓库里自己提交的文件，和登录后的后台。没有不可信输入。
    */
   async function renderMarkdown(content: string): Promise<string> {
-    return (await remark().use(gfm).use(html).process(content)).toString();
+    return (await remark().use(gfm).use(normalizeHeadings).use(html).process(content)).toString();
   }
 
   async function getDetail(
