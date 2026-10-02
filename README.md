@@ -275,7 +275,7 @@ lib/auth.ts（登录） / lib/github.ts（云端保存）
 |---|---|
 | `ADMIN_PASSWORD_HASH` | **登录永远失败**，且症状伪装成"密码不对" |
 | `SESSION_SECRET` | 签发会话时抛错，登录 500 |
-| `GITHUB_SYNC_TOKEN` | 站点照常跑，**后台能看不能存**，页面顶部会写明原因 |
+| `SITE_SYNC_TOKEN` | 站点照常跑，**后台能看不能存**，页面顶部会写明原因 |
 
 前两个必须**同时**配置（只配一个会被 Preflight 拦下）。第三个独立可选。
 两个都没配时走 SKIP 分支，服务器上现有的 `.env` 保持原样。
@@ -330,7 +330,7 @@ TypeScript 5.6 引入的 `ArrayIterator`）。`Buffer` 继承 DOM 那份，而
 代价是发布要等一次部署（1–2 分钟），而部署的可靠性由「在 runner 上构建、
 推产物」保证，见上面「部署」一节。
 
-**16. 后台保存需要 `GITHUB_SYNC_TOKEN`**
+**16. 后台保存需要 `SITE_SYNC_TOKEN`**
 
 后台的保存/删除**直接调 GitHub Contents API**，不经过服务端。原因是这台
 腾讯云服务器访问不了 GitHub —— 会被 TLS 间歇重置，push 走的是和 `git fetch`
@@ -340,18 +340,32 @@ token 是 fine-grained PAT：
 
 - Repository access：仅 `xinlong-li/xinlong-site`
 - Permissions：**Contents: Read and write**（必须）
-- 存成仓库 Secret `GITHUB_SYNC_TOKEN`，部署时由工作流写进服务器 `.env`
+- 存成仓库 Secret `SITE_SYNC_TOKEN`，部署时由工作流写进服务器 `.env`
+
+**为什么叫 `SITE_SYNC_TOKEN` 而不是 `GITHUB_SYNC_TOKEN`** —— 这个名字不能改。
+
+GitHub **把 `GITHUB_` 前缀整个保留了**，`GITHUB_TOKEN`、`GITHUB_ACTOR` 这些内置
+变量占着。这个限制**同时作用于 Secret 名和 workflow 里的环境变量名**：
+
+- Secret：直接拒绝保存，报 `Secret names must not start with GITHUB_.`
+- （服务端和 `.env` 里叫什么是无所谓的，`process.env` 不受这条限制；但为了
+  三处名字一致、不让人困惑，统一用 `SITE_SYNC_TOKEN`）
+
+所以它叫 `SITE_SYNC_TOKEN` 是**被迫的**，不是随手起的。看到它"不够直白"时
+不要好心改回 `GITHUB_` 开头 —— 改了会连 Secret 都存不进去。
 
 **它会过期。** 到期后后台保存会失败，出错信息是 GitHub 返回的
 `HTTP 401 Bad credentials（token 可能已过期或被撤销）`—— 看到 401 先去
 检查 token，不要怀疑密码或网络。续期就是新建一个 token 覆盖这个 Secret。
+所以建 token 时**有效期选最长**：30 天的话一个月后发文功能会静默断掉，
+而症状伪装成"密码不对"。
 
 **未配置时**：站点照常运行，后台能看不能存，页面顶部会明确写出原因。
 `getRepoRefAction` 对这种情况**返回**错误而不是抛 —— server action 抛出的
 异常在生产构建里会被 React 包装成 `Minified React error #441`，用户看到的
 是一个错误码而不是"去哪里配 token"。预期内的失败一律返回，不抛。
 
-**本地开发**：在 `.env` 里加 `GITHUB_SYNC_TOKEN="github_pat_..."` 即可；
+**本地开发**：在 `.env` 里加 `SITE_SYNC_TOKEN="github_pat_..."` 即可；
 不加的话后台会按"未配置"处理，不影响其他功能。
 
 **17. 打包产物时必须排除 `.env` —— Next 会把它复制进 `.next/standalone`**

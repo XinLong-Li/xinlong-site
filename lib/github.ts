@@ -21,10 +21,10 @@ export type RepoRef = {
  * 那会让 401 伪装成"保存失败"，又变成靠猜的故障。
  */
 export function getRepoRef(): RepoRef {
-  const token = process.env.GITHUB_SYNC_TOKEN;
+  const token = process.env.SITE_SYNC_TOKEN;
   if (!token) {
     throw new Error(
-      "GITHUB_SYNC_TOKEN 未配置。在仓库 Secrets 里加上它，然后重新部署一次。",
+      "SITE_SYNC_TOKEN 未配置。在仓库 Secrets 里加上它，然后重新部署一次。",
     );
   }
   return { owner: OWNER, repo: REPO, token };

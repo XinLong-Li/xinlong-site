@@ -11,7 +11,7 @@
 # 进来之前工作流已经：构建好、打好两个包、把包传到 ${APP_DIR}。
 # 由工作流以 shell 变量的形式拼在脚本前面（见 deploy-tencent.yml）—— 走 stdin
 # 而不是命令行参数，服务器上 `ps` 看不到它们：
-#   ADMIN_PASSWORD_HASH / SESSION_SECRET / GITHUB_SYNC_TOKEN   凭据，可为空
+#   ADMIN_PASSWORD_HASH / SESSION_SECRET / SITE_SYNC_TOKEN   凭据，可为空
 #   DEPS_HASH                                                  本次构建的依赖层指纹
 #
 # 本脚本刻意不做的事：
@@ -158,17 +158,17 @@ rm -rf "$STAGE"
 #   1. 先写 .env.new 再 mv 过去 —— mv 是原子的。原来的 `printf > .env` 是就地
 #      截断，中途失败会留下一个半截文件，而症状是"密码明明改了却登不上"。
 #   2. 写完先自检再把文件换上去。
-echo "[7/9] 写 .env（hash=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) session=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no) token=$([ -n "${GITHUB_SYNC_TOKEN:-}" ] && echo yes || echo no))"
+echo "[7/9] 写 .env（hash=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) session=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no) token=$([ -n "${SITE_SYNC_TOKEN:-}" ] && echo yes || echo no))"
 
 if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
   ( umask 077; printf '%s\n%s\n' \
       "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
       "SESSION_SECRET=\"$SESSION_SECRET\"" > .env.new )
-  if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
-    printf '%s\n' "GITHUB_SYNC_TOKEN=\"$GITHUB_SYNC_TOKEN\"" >> .env.new
+  if [ -n "${SITE_SYNC_TOKEN:-}" ]; then
+    printf '%s\n' "SITE_SYNC_TOKEN=\"$SITE_SYNC_TOKEN\"" >> .env.new
     echo "  token 已追加"
   else
-    echo "  没有 GITHUB_SYNC_TOKEN，跳过（后台只能看不能存）"
+    echo "  没有 SITE_SYNC_TOKEN，跳过（后台只能看不能存）"
   fi
   chmod 600 .env.new
 

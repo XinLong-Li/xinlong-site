@@ -30,7 +30,7 @@ module.exports = {
       // server.js 走的是 Next 的 BaseServer，构造时会无条件调用
       // loadEnvConfig(dir)，dir 就是 server.js 所在目录 —— 也就是这个项目根，
       // .env 正好在那里。所以 ADMIN_PASSWORD_HASH / SESSION_SECRET /
-      // GITHUB_SYNC_TOKEN 由 Next 自己读进 process.env，不需要 PM2 代劳。
+      // SITE_SYNC_TOKEN 由 Next 自己读进 process.env，不需要 PM2 代劳。
       // （next/dist/server/base-server.js 里 loadEnvConfig 那行没有
       //   minimalMode 判断，standalone 下同样会执行。）
       //

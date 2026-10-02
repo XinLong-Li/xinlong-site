@@ -107,7 +107,7 @@ export async function logoutAction(formData: FormData): Promise<void> {
  * localStorage、不写 cookie。admin 页面会渲染用户写的 markdown，把长期
  * 凭证放进一个渲染用户输入的页面的持久存储里，是在赌 remark-html 的转义。
  *
- * 未配置 GITHUB_SYNC_TOKEN 时 getRepoRef 会抛明确错误，客户端把它显示出来
+ * 未配置 SITE_SYNC_TOKEN 时 getRepoRef 会抛明确错误，客户端把它显示出来
  * （而不是在服务端静默返回 null —— 那样用户只会看到一个不工作的编辑器）。
  */
 export type RepoRefResult =

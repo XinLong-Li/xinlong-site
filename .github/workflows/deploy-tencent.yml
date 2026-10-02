@@ -62,7 +62,7 @@ jobs:
           APP_DIR: ${{ secrets.APP_DIR }}
           ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          GITHUB_SYNC_TOKEN: ${{ secrets.GITHUB_SYNC_TOKEN }}
+          SITE_SYNC_TOKEN: ${{ secrets.SITE_SYNC_TOKEN }}
         run: |
           set -e
           for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
@@ -85,10 +85,10 @@ jobs:
             exit 1
           fi
 
-          if [ -n "$GITHUB_SYNC_TOKEN" ]; then
-            echo "✅ GITHUB_SYNC_TOKEN 已配置 —— 后台可以在云端写文章"
+          if [ -n "$SITE_SYNC_TOKEN" ]; then
+            echo "✅ SITE_SYNC_TOKEN 已配置 —— 后台可以在云端写文章"
           else
-            echo "· GITHUB_SYNC_TOKEN 未配置 —— 后台只能看，不能保存"
+            echo "· SITE_SYNC_TOKEN 未配置 —— 后台只能看，不能保存"
           fi
 
           if [ -n "$SSH_KNOWN_HOSTS" ]; then
@@ -179,7 +179,7 @@ jobs:
           APP_DIR: ${{ secrets.APP_DIR }}
           ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          GITHUB_SYNC_TOKEN: ${{ secrets.GITHUB_SYNC_TOKEN }}
+          SITE_SYNC_TOKEN: ${{ secrets.SITE_SYNC_TOKEN }}
         run: |
           set -euo pipefail
           # 把凭据和依赖指纹以 shell 赋值的形式拼在脚本前面，一起走 stdin。
@@ -189,7 +189,7 @@ jobs:
           {
             printf 'ADMIN_PASSWORD_HASH=%q\n' "${ADMIN_PASSWORD_HASH:-}"
             printf 'SESSION_SECRET=%q\n' "${SESSION_SECRET:-}"
-            printf 'GITHUB_SYNC_TOKEN=%q\n' "${GITHUB_SYNC_TOKEN:-}"
+            printf 'SITE_SYNC_TOKEN=%q\n' "${SITE_SYNC_TOKEN:-}"
             printf 'DEPS_HASH=%q\n' "$(cat release-deps.hash)"
             cat scripts/deploy-release.sh
           } | ssh deploy-target "bash -s -- '$APP_DIR'"

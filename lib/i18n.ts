@@ -204,7 +204,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       stateDraft: "服务器草稿",
       statePendingDelete: "已删除，待部署生效",
       tokenMissing:
-        "服务端没有配置 GITHUB_SYNC_TOKEN，暂时无法保存。在仓库 Secrets 里加上它再重新部署一次。",
+        "服务端没有配置 SITE_SYNC_TOKEN，暂时无法保存。在仓库 Secrets 里加上它再重新部署一次。",
       loading: "加载中…",
       publishedHint: "已提交到 GitHub，约 1–2 分钟后自动部署上线。",
       viewCommit: "查看提交",
@@ -347,7 +347,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       stateDraft: "Server draft",
       statePendingDelete: "Deleted, pending deploy",
       tokenMissing:
-        "GITHUB_SYNC_TOKEN is not configured on the server, so saving is disabled. Add it to the repository secrets and redeploy.",
+        "SITE_SYNC_TOKEN is not configured on the server, so saving is disabled. Add it to the repository secrets and redeploy.",
       loading: "Loading…",
       publishedHint: "Committed to GitHub — live in about 1–2 minutes.",
       viewCommit: "View commit",
