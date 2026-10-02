@@ -2,6 +2,12 @@
 
 李新龙 / Xinlong Li 的个人作品集站点 — 中英双语，嵌入式软件与机器人运动控制方向。
 
+> **两份文档，分工不同：**
+>
+> - 这份 `README.md` 是**操作手册** —— 21 条具体的坑，改代码前查这里
+> - [`RETROSPECTIVE.md`](RETROSPECTIVE.md) 是**演进记录** —— 为什么走到今天
+>   这个设计、一路上踩了哪些坑、哪些是可迁移的经验。想了解来龙去脉时看它
+
 ## 技术栈
 
 - **框架**：Next.js 16（App Router + Turbopack）、React 18、TypeScript strict
