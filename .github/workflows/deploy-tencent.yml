@@ -136,36 +136,40 @@ jobs:
 
             if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
               echo "  [6a] both required secrets present"
-              # Subshell umask so the file is created 0600 directly, with no
-              # window where it is world-readable.
-              #
-              # GITHUB_SYNC_TOKEN is optional: without it the site runs fine and
-              # only the admin's cloud-save feature is unavailable, so it is
-              # checked separately rather than being required here.
-              ( umask 077; {
-                  printf '%s\n%s\n' \
-                    "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
-                    "SESSION_SECRET=\"$SESSION_SECRET\""
-                  if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
-                    printf '%s\n' "GITHUB_SYNC_TOKEN=\"$GITHUB_SYNC_TOKEN\""
-                  fi
-                } > .env )
-              echo "  [6b] .env written"
-              chmod 600 .env
-              echo "  [6c] chmod 600 ok"
 
-              # Self-check: required keys must be present, else fail now rather
-              # than leave a broken .env behind.
+              # Write the two required keys. Subshell umask so the file is
+              # created 0600 directly -- never world-readable, not even
+              # briefly.
+              #
+              # This is deliberately the exact shape that has deployed
+              # successfully before: a plain printf redirected to .env. An
+              # earlier attempt wrapped it in a brace group so the optional
+              # token could be added in the same statement, and that hung
+              # the step with no error output.
+              ( umask 077; printf '%s\n%s\n' \
+                  "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
+                  "SESSION_SECRET=\"$SESSION_SECRET\"" > .env )
+              echo "  [6b] .env written"
+
+              # Append the optional token as a separate simple step, so the
+              # required path above stays untouched.
+              if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
+                printf '%s\n' "GITHUB_SYNC_TOKEN=\"$GITHUB_SYNC_TOKEN\"" >> .env
+                echo "  [6c] token appended"
+              else
+                echo "  [6c] no GITHUB_SYNC_TOKEN, skipping"
+              fi
+
+              chmod 600 .env
+
+              # Self-check: required keys must be present, else fail now
+              # rather than leave a broken .env behind.
               for k in ADMIN_PASSWORD_HASH SESSION_SECRET; do
                 grep -q "^$k=" .env || { echo "ERROR: .env is missing $k" >&2; exit 1; }
               done
-              echo "  [6d] both keys present"
+              echo "  [6d] keys verified"
 
-              if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
-                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes, incl. GITHUB_SYNC_TOKEN)"
-              else
-                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes) -- no GITHUB_SYNC_TOKEN, cloud save disabled"
-              fi
+              echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes)"
             else
               echo "SKIP: ADMIN_PASSWORD_HASH / SESSION_SECRET not set, leaving .env alone"
             fi
