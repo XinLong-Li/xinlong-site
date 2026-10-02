@@ -103,58 +103,44 @@ jobs:
             echo "[4/9] mkdir logs"
             mkdir -p logs
 
-            # ---------------------------------------------------------------
-            # 清理已经归档进仓库的遗留草稿
-            #
-            # content/runtime/ 是旧的"运行时发布"机制留下的目录，现在内容
-            # 一律走 git，那套写入已经拆了。服务器上还有当初从后台发的几篇，
-            # 它们不在仓库里。
-            #
-            # 用户在新编辑器里编辑这些草稿时，会把它提交进仓库 —— 从那一刻
-            # 起磁盘上同一篇就有两份。读取时"git 优先"，所以内容是对的，但
-            # runtime 那份会变成隐患：**如果哪天从 git 删掉这篇，runtime 副本
-            # 会让它复活**。
-            #
-            # 所以每次部署后，把 slug 已经存在于 git 的 runtime 副本删掉。
-            # 放在构建之后执行，这样万一这次部署失败，副本还在，站点不丢内容。
-            # ---------------------------------------------------------------
+            # --- Prune runtime drafts that have since been archived into git ---
+            # content/runtime/ is the leftover from the old "publish at runtime"
+            # mechanism, which is gone: content now goes through git. Editing one
+            # of those drafts commits it to the repo, after which two copies
+            # exist on disk. Reads prefer git so the content stays correct, but
+            # the runtime copy is a hazard -- deleting the post from git would
+            # resurrect it. So drop the copies whose slug now exists in git.
+            # NOTE: use `find`, not a shell glob. An unmatched glob aborts
+            # some shells outright (zsh: "no matches found"; bash with
+            # failglob) and content/runtime/ may well be absent -- it is
+            # empty on a fresh server. `find` returns success either way.
             echo "[5/9] prune archived drafts"
-            pruned=0
-            for kind in posts moments; do
-              for f in content/runtime/$kind/*/*.md; do
-                [ -f "$f" ] || continue
-                # content/runtime/posts/zh/x.md -> content/posts/zh/x.md
+            if [ -d content/runtime ]; then
+              find content/runtime -type f -name "*.md" | while read -r f; do
                 rel=${f#content/runtime/}
                 if [ -f "content/$rel" ]; then
                   rm -f "$f"
-                  pruned=$((pruned + 1))
+                  echo "  pruned: $rel"
                 fi
               done
-            done
-            if [ "$pruned" -gt 0 ]; then
-              echo "  已清理 $pruned 篇已归档的草稿"
-            else
-              echo "  没有需要清理的草稿"
             fi
+            echo "  prune step done"
 
-            # ---------------------------------------------------------------
-            # 由 GitHub Secrets 声明式地生成 .env
-            #
-            # 只有两个 Secret 都配了才写；否则完全不动（保持这个功能可选）。
-            #
-            # .env 被 .gitignore 覆盖，所以上面的 `git reset --hard` 不会碰它。
-            #
-            # 注意：这个文件由本工作流独家拥有。手工往 .env 里加别的变量，
-            # 下次部署会被这行覆盖 —— 要加就加在这里。
-            # ---------------------------------------------------------------
+            # --- Generate .env declaratively from GitHub Secrets ---
+            # Written only when both required secrets are present; otherwise the
+            # file is left untouched so the feature stays optional. .env is
+            # gitignored, so the `git reset --hard` above ignores it.
+            # This workflow owns the file: anything added by hand is overwritten
+            # on the next deploy.
             echo "[6/9] write .env (hash=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) session=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no) token=$([ -n "${GITHUB_SYNC_TOKEN:-}" ] && echo yes || echo no))"
 
             if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
-              # 用子 shell 限定 umask，避免影响后续命令；
-              # 这样文件创建时权限就是 600，不存在"先建后改"的窗口期。
+              # Subshell umask so the file is created 0600 directly, with no
+              # window where it is world-readable.
               #
-              # GITHUB_SYNC_TOKEN 是**可选**的：没有它站点照常跑，只是后台的
-              # 云端保存功能不可用。所以它单独判断，不参与上面的必需性检查。
+              # GITHUB_SYNC_TOKEN is optional: without it the site runs fine and
+              # only the admin's cloud-save feature is unavailable, so it is
+              # checked separately rather than being required here.
               ( umask 077; {
                   printf '%s\n%s\n' \
                     "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
@@ -165,18 +151,19 @@ jobs:
                 } > .env )
               chmod 600 .env
 
-              # 写完自校验：必需的键必须在，否则立刻失败而不是留个坏的 .env
+              # Self-check: required keys must be present, else fail now rather
+              # than leave a broken .env behind.
               for k in ADMIN_PASSWORD_HASH SESSION_SECRET; do
-                grep -q "^$k=" .env || { echo "ERROR: .env 缺少 $k" >&2; exit 1; }
+                grep -q "^$k=" .env || { echo "ERROR: .env is missing $k" >&2; exit 1; }
               done
 
               if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
-                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes, 含 GITHUB_SYNC_TOKEN)"
+                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes, incl. GITHUB_SYNC_TOKEN)"
               else
-                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes) —— 未配 GITHUB_SYNC_TOKEN，云端保存功能不可用"
+                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes) -- no GITHUB_SYNC_TOKEN, cloud save disabled"
               fi
             else
-              echo "SKIP: ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置，不动 .env"
+              echo "SKIP: ADMIN_PASSWORD_HASH / SESSION_SECRET not set, leaving .env alone"
             fi
 
             echo "[7/9] npm ci"
