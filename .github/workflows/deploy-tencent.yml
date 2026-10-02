@@ -19,6 +19,14 @@ on:
   push:
     branches: [ main ]
 
+# 同一时刻只允许一个部署在跑。两个部署并发会在服务器上互相踩：两边都会
+# rm -rf .next / node_modules 再 mv 新的进去，交错执行会留下一个混合状态，
+# 而且两边都会重启 PM2。cancel-in-progress 保持 false —— 部署跑到一半被
+# 掐掉正是最糟的情况，让它跑完，新的排队等。
+concurrency:
+  group: deploy-tencent
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -136,16 +144,34 @@ jobs:
           # set -u 下直接报 unbound variable 并终止这一步。
           echo "✅ SSH 已配置：${SSH_USER}@${SSH_HOST}:${PORT}（主机密钥校验=${HOST_KEY_CHECKING}）"
 
-      - name: Upload artifact
+      - name: Upload artifacts
         env:
           APP_DIR: ${{ secrets.APP_DIR }}
         run: |
           set -euo pipefail
-          echo "上传 release.tar.gz（$(du -h release.tar.gz | cut -f1 | tr -d ' ')）→ $APP_DIR/"
-          # 直接流过去，不在服务器上留中间文件、也不重复写盘。
-          # pipefail 保证 ssh 侧失败（比如磁盘满）不会被 cat 的成功掩盖 ——
-          # 这正是 bash 默认行为下最容易漏掉的一类失败。
-          cat release.tar.gz | ssh deploy-target "cat > '$APP_DIR/release.tar.gz'"
+
+          upload() {   # $1 = 本地文件, $2 = 远端文件名
+            echo "  上传 $1（$(du -h "$1" | cut -f1 | tr -d ' ')）"
+            # 直接流过去，不在服务器上留中间文件、也不重复写盘。
+            # pipefail 保证 ssh 侧失败（比如磁盘满）不会被 cat 的成功掩盖 ——
+            # 这正是 bash 默认行为下最容易漏掉的一类失败。
+            cat "$1" | ssh deploy-target "cat > '$APP_DIR/$2'"
+          }
+
+          # 依赖层 15MB 而应用层只有 1MB 出头。实测 GitHub runner → 腾讯云的上传
+          # 只有约 19 KB/s（17MB 传了 15 分 22 秒），所以必须避免重复传依赖层：
+          # 发一篇文章只该付应用层的代价。
+          DEPS_HASH="$(cat release-deps.hash)"
+          REMOTE_HASH="$(ssh deploy-target "cat '$APP_DIR/.deps-hash' 2>/dev/null || echo none")"
+
+          if [ "$DEPS_HASH" = "$REMOTE_HASH" ]; then
+            echo "✅ 依赖未变（${DEPS_HASH}），跳过依赖层上传"
+          else
+            echo "依赖有变化：服务器上是 ${REMOTE_HASH}，本次是 ${DEPS_HASH}"
+            upload release-deps.tar.gz release-deps.tar.gz
+          fi
+
+          upload release-app.tar.gz release-app.tar.gz
           echo "✅ 上传完成"
 
       - name: Deploy on server
@@ -156,14 +182,15 @@ jobs:
           GITHUB_SYNC_TOKEN: ${{ secrets.GITHUB_SYNC_TOKEN }}
         run: |
           set -euo pipefail
-          # 把三个 Secret 以 shell 赋值的形式拼在脚本前面，一起走 stdin。
+          # 把凭据和依赖指纹以 shell 赋值的形式拼在脚本前面，一起走 stdin。
           # 走 stdin 而不是命令行参数，是为了不在服务器的 `ps` 里留下它们。
           # %q 负责转义 —— token 里出现引号、空格、$ 都不会破。
-          # 值为空时写成 ''，远端脚本据此走 SKIP 分支、保持服务器 .env 不动。
+          # 凭据为空时写成 ''，远端脚本据此走 SKIP 分支、保持服务器 .env 不动。
           {
             printf 'ADMIN_PASSWORD_HASH=%q\n' "${ADMIN_PASSWORD_HASH:-}"
             printf 'SESSION_SECRET=%q\n' "${SESSION_SECRET:-}"
             printf 'GITHUB_SYNC_TOKEN=%q\n' "${GITHUB_SYNC_TOKEN:-}"
+            printf 'DEPS_HASH=%q\n' "$(cat release-deps.hash)"
             cat scripts/deploy-release.sh
           } | ssh deploy-target "bash -s -- '$APP_DIR'"
 

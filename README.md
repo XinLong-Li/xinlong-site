@@ -83,8 +83,36 @@ content/
 
 ```
 push → runner: npm ci → BUILD_STANDALONE=1 npm run build → package-release.sh
-                ↓ 17MB 的 tar 流，直接喂给远端的 cat
-             服务器: 解压到 .release/ → 校验 → 换 content → 换应用 → 重启 → 健康检查
+                ↓ 两个 tar 流，直接喂给远端的 cat
+             服务器: 解压 .release/ → 校验 → 换依赖 → 换 content → 换应用 → 重启 → 健康检查
+```
+
+### 产物分两层，因为上传很慢
+
+实测 **GitHub runner → 腾讯云的上传只有约 19 KB/s**：17MB 传了 **15 分 22 秒**
+（本文写作时测了两次，都是这个量级）。而 17MB 里有 15MB 是 `node_modules`，
+它只在依赖变化时才需要更新。所以拆成两层：
+
+| 层 | 内容 | 大小 | 什么时候传 |
+|---|---|---|---|
+| 应用层 | `server.js` / `.next` / `public` / `content` / PM2 配置 | **1.5 MB** | 每次都传 |
+| 依赖层 | `node_modules` | 15 MB | 只在指纹变化时传 |
+
+指纹是对 `node_modules` 的**路径+内容**取的 sha256，记在服务器的 `.deps-hash` 里。
+**刻意不对 tar 包取哈希** —— gzip 头和 mtime 每次构建都不同，那样每次都会判定成
+"依赖变了"，这个优化就白做了。
+
+结果是发一篇文章从传 17MB 变成传 1.5MB：**约 80 秒，而不是 15 分钟**。
+
+指纹对不上而依赖层又没上传时，服务器**拒绝部署**而不是硬着头皮上 ——
+让新代码跑在旧依赖上，会以完全无关的运行时错误出现，那种错很难查。
+
+`npm run package:release` 的输出：
+
+```
+OK  release-app.tar.gz (1.5M)
+OK  release-deps.tar.gz (15M)
+OK  release-deps.hash (6d9aa36d…)
 ```
 
 ### 为什么不是"SSH 上去 git reset + npm ci + npm build"
