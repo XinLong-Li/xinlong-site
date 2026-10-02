@@ -1,22 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
 
 import { cn } from "@/lib/cn";
 import type { Lang } from "@/lib/i18n";
-import {
-  createMomentAction,
-  createPostAction,
-  updateMomentAction,
-  updatePostAction,
-} from "./actions";
 
 type Kind = "post" | "moment";
 
-export type EditorInitial = {
+export type EditorValues = {
   kind: Kind;
-  slug: string;
   title: string;
   tags: string;
   body: string;
@@ -35,61 +27,47 @@ type Labels = {
   tagsHint: string;
 };
 
-/**
- * 提交按钮必须用原生 <button type="submit">。
- * components/Button.tsx 硬编码了 type="button"，放进表单里点了不提交，
- * 而且看起来像"按钮没反应"。
- */
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-strong disabled:opacity-60 dark:text-surface"
-    >
-      {pending ? "…" : label}
-    </button>
-  );
-}
-
 const field =
-  "mt-2 w-full rounded-xl border border-border bg-surface-raised px-3.5 py-2.5 text-fg outline-none transition-colors focus:border-accent";
+  "mt-2 w-full rounded-xl border border-border bg-surface-raised px-3.5 py-2.5 text-fg outline-none transition-colors focus:border-accent disabled:opacity-60";
 const labelCls = "block text-sm font-medium text-fg-muted";
 
 export default function Editor({
   lang,
   labels,
   initial,
+  disabled,
+  onSubmit,
+  onCancel,
 }: {
   lang: Lang;
   labels: Labels;
-  initial?: EditorInitial;
+  initial?: EditorValues & { slug: string };
+  disabled: boolean;
+  onSubmit: (values: EditorValues) => void | Promise<void>;
+  onCancel: () => void;
 }) {
   const isEdit = Boolean(initial);
   const [kind, setKind] = useState<Kind>(initial?.kind ?? "post");
 
-  const action = isEdit
-    ? kind === "post"
-      ? updatePostAction
-      : updateMomentAction
-    : kind === "post"
-      ? createPostAction
-      : createMomentAction;
+  // 非受控字段：切换类型 / 切到另一篇编辑时用 key 重建，避免残留上一次的内容。
+  const formKey = `${isEdit ? initial!.slug : "new"}-${kind}`;
 
   return (
     <form
-      // key 让切换类型时重建表单：从长文切到随笔要丢掉标题和标签，
-      // 否则会出现"看起来填了但不会被保存"的困惑。
-      key={`${isEdit ? "edit" : "new"}-${kind}`}
-      action={action}
+      key={formKey}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        void onSubmit({
+          kind,
+          title: String(fd.get("title") ?? ""),
+          tags: String(fd.get("tags") ?? ""),
+          body: String(fd.get("body") ?? ""),
+        });
+      }}
       className="rounded-xl border border-border bg-surface-raised p-5 shadow-[var(--shadow-card)]"
     >
-      <input type="hidden" name="lang" value={lang} />
-      <input type="hidden" name="kind" value={kind} />
-      {isEdit && <input type="hidden" name="slug" value={initial!.slug} />}
-
-      {/* 编辑态不允许改类型：两个集合的 slug 语义不同，改类型等于换 URL。 */}
+      {/* 编辑态不允许改类型：两个集合的目录不同，改类型等于换 URL。 */}
       {!isEdit && (
         <div className="mb-5 inline-flex rounded-xl border border-border p-0.5">
           {(["post", "moment"] as const).map((k) => (
@@ -119,6 +97,7 @@ export default function Editor({
             id="f-title"
             name="title"
             required
+            disabled={disabled}
             defaultValue={initial?.title ?? ""}
             className={field}
           />
@@ -129,6 +108,7 @@ export default function Editor({
           <input
             id="f-tags"
             name="tags"
+            disabled={disabled}
             defaultValue={initial?.tags ?? ""}
             placeholder={labels.tagsHint}
             className={field}
@@ -143,22 +123,38 @@ export default function Editor({
         id="f-body"
         name="body"
         required
+        disabled={disabled}
         rows={kind === "post" ? 14 : 5}
         defaultValue={initial?.body ?? ""}
         className={cn(field, "resize-y font-mono text-sm leading-relaxed")}
       />
 
       <div className="mt-5 flex items-center gap-3">
-        <SubmitButton label={isEdit ? labels.save : labels.publish} />
+        <button
+          type="submit"
+          disabled={disabled}
+          className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-strong disabled:opacity-60 dark:text-surface"
+        >
+          {isEdit ? labels.save : labels.publish}
+        </button>
         {isEdit && (
-          <a
-            href={`/${lang}/admin`}
+          <button
+            type="button"
+            onClick={onCancel}
             className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
           >
             {labels.cancel}
-          </a>
+          </button>
         )}
       </div>
+
+      <p className="mt-3 text-xs text-fg-subtle">
+        {/* 提交会直接写进 GitHub 仓库，不是写服务器磁盘 —— 说清楚，
+            否则用户会以为保存了什么都没发生。 */}
+        {lang === "zh"
+          ? "保存 = 提交到 GitHub 仓库，约 1–2 分钟后自动部署上线。"
+          : "Saving commits to the GitHub repository directly — live in about 1–2 minutes."}
+      </p>
     </form>
   );
 }

@@ -32,6 +32,7 @@ jobs:
           APP_DIR: ${{ secrets.APP_DIR }}
           ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          GITHUB_SYNC_TOKEN: ${{ secrets.GITHUB_SYNC_TOKEN }}
         run: |
           set -e
           for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
@@ -54,6 +55,14 @@ jobs:
             exit 1
           fi
 
+          # GITHUB_SYNC_TOKEN 完全独立：没有它站点照常跑，只是后台的云端
+          # 保存功能不可用（会提示"未配置 token"）。
+          if [ -n "$GITHUB_SYNC_TOKEN" ]; then
+            echo "✅ GITHUB_SYNC_TOKEN 已配置 —— 后台可以在云端写文章"
+          else
+            echo "· GITHUB_SYNC_TOKEN 未配置 —— 后台只能看，不能保存"
+          fi
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.0
         # ⚠️ 这个 env: 块不能删。
@@ -65,6 +74,7 @@ jobs:
         env:
           ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          GITHUB_SYNC_TOKEN: ${{ secrets.GITHUB_SYNC_TOKEN }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -73,10 +83,10 @@ jobs:
           script_stop: true
           # 用变量而非字面值，脚本正文里没有可泄露的内容。
           # GitHub 也会把日志里的这些值自动打码成 ***。
-          envs: ADMIN_PASSWORD_HASH,SESSION_SECRET
+          envs: ADMIN_PASSWORD_HASH,SESSION_SECRET,GITHUB_SYNC_TOKEN
           script: |
             set -e
-            echo "[1/8] cd to app dir"
+            echo "[1/9] cd to app dir"
             cd ${{ secrets.APP_DIR }}
 
             # Ensure repo exists; clone if missing
@@ -84,14 +94,48 @@ jobs:
               git clone https://github.com/${{ github.repository }} .
             fi
 
-            echo "[2/8] git fetch"
+            echo "[2/9] git fetch"
             git fetch --all
 
-            echo "[3/8] git reset"
+            echo "[3/9] git reset"
             git reset --hard origin/main
 
-            echo "[4/8] mkdir logs"
+            echo "[4/9] mkdir logs"
             mkdir -p logs
+
+            # ---------------------------------------------------------------
+            # 清理已经归档进仓库的遗留草稿
+            #
+            # content/runtime/ 是旧的"运行时发布"机制留下的目录，现在内容
+            # 一律走 git，那套写入已经拆了。服务器上还有当初从后台发的几篇，
+            # 它们不在仓库里。
+            #
+            # 用户在新编辑器里编辑这些草稿时，会把它提交进仓库 —— 从那一刻
+            # 起磁盘上同一篇就有两份。读取时"git 优先"，所以内容是对的，但
+            # runtime 那份会变成隐患：**如果哪天从 git 删掉这篇，runtime 副本
+            # 会让它复活**。
+            #
+            # 所以每次部署后，把 slug 已经存在于 git 的 runtime 副本删掉。
+            # 放在构建之后执行，这样万一这次部署失败，副本还在，站点不丢内容。
+            # ---------------------------------------------------------------
+            echo "[5/9] prune archived drafts"
+            pruned=0
+            for kind in posts moments; do
+              for f in content/runtime/$kind/*/*.md; do
+                [ -f "$f" ] || continue
+                # content/runtime/posts/zh/x.md -> content/posts/zh/x.md
+                rel=${f#content/runtime/}
+                if [ -f "content/$rel" ]; then
+                  rm -f "$f"
+                  pruned=$((pruned + 1))
+                fi
+              done
+            done
+            if [ "$pruned" -gt 0 ]; then
+              echo "  已清理 $pruned 篇已归档的草稿"
+            else
+              echo "  没有需要清理的草稿"
+            fi
 
             # ---------------------------------------------------------------
             # 由 GitHub Secrets 声明式地生成 .env
@@ -103,32 +147,45 @@ jobs:
             # 注意：这个文件由本工作流独家拥有。手工往 .env 里加别的变量，
             # 下次部署会被这行覆盖 —— 要加就加在这里。
             # ---------------------------------------------------------------
-            echo "[5/8] write .env (hash_set=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) secret_set=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no))"
+            echo "[6/9] write .env (hash=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) session=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no) token=$([ -n "${GITHUB_SYNC_TOKEN:-}" ] && echo yes || echo no))"
 
             if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
               # 用子 shell 限定 umask，避免影响后续命令；
               # 这样文件创建时权限就是 600，不存在"先建后改"的窗口期。
-              ( umask 077; printf '%s\n%s\n' \
-                  "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
-                  "SESSION_SECRET=\"$SESSION_SECRET\"" > .env )
+              #
+              # GITHUB_SYNC_TOKEN 是**可选**的：没有它站点照常跑，只是后台的
+              # 云端保存功能不可用。所以它单独判断，不参与上面的必需性检查。
+              ( umask 077; {
+                  printf '%s\n%s\n' \
+                    "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
+                    "SESSION_SECRET=\"$SESSION_SECRET\""
+                  if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
+                    printf '%s\n' "GITHUB_SYNC_TOKEN=\"$GITHUB_SYNC_TOKEN\""
+                  fi
+                } > .env )
               chmod 600 .env
 
-              # 写完自校验：确认两个键都在，否则立刻失败而不是留个坏的 .env
+              # 写完自校验：必需的键必须在，否则立刻失败而不是留个坏的 .env
               for k in ADMIN_PASSWORD_HASH SESSION_SECRET; do
                 grep -q "^$k=" .env || { echo "ERROR: .env 缺少 $k" >&2; exit 1; }
               done
-              echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes)"
+
+              if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
+                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes, 含 GITHUB_SYNC_TOKEN)"
+              else
+                echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes) —— 未配 GITHUB_SYNC_TOKEN，云端保存功能不可用"
+              fi
             else
               echo "SKIP: ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置，不动 .env"
             fi
 
-            echo "[6/8] npm ci"
+            echo "[7/9] npm ci"
             npm ci
 
-            echo "[7/8] npm run build"
+            echo "[8/9] npm run build"
             npm run build
 
-            echo "[8/8] pm2 restart"
+            echo "[9/9] pm2 restart"
             if ! command -v pm2 >/dev/null 2>&1; then
               npm i -g pm2
             fi

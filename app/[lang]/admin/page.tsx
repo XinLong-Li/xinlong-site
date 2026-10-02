@@ -5,11 +5,9 @@ import type { Metadata } from "next";
 import Container from "@/components/Container";
 import { SESSION_COOKIE, isValidSessionToken, remainingLockoutMinutes } from "@/lib/auth";
 import { moments, posts } from "@/lib/content";
-import { getDictionary, isLang } from "@/lib/i18n";
-import { logoutAction } from "./actions";
-import Editor, { type EditorInitial } from "./Editor";
+import { getDictionary, isLang, type Lang } from "@/lib/i18n";
+import AdminPanel, { type ServerPost } from "./AdminPanel";
 import LoginForm from "./LoginForm";
-import RuntimeList, { type RuntimeEntry } from "./RuntimeList";
 
 /**
  * 管理后台。**不加 generateStaticParams、不加 revalidate。**
@@ -21,16 +19,7 @@ import RuntimeList, { type RuntimeEntry } from "./RuntimeList";
  */
 export const metadata: Metadata = {
   title: "Admin",
-  // 双保险：next.config.js 里还有 X-Robots-Tag 响应头（那是强制的，
-  // 而 robots.txt 的 Disallow 只是"请求"）。
   robots: { index: false, follow: false },
-};
-
-type Search = {
-  error?: string;
-  ok?: string;
-  edit?: string;
-  kind?: string;
 };
 
 export default async function AdminPage({
@@ -38,13 +27,13 @@ export default async function AdminPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<Search>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { lang } = await params;
   if (!isLang(lang)) notFound();
 
   const t = getDictionary(lang);
-  const { error, ok, edit, kind } = await searchParams;
+  const { error } = await searchParams;
 
   const store = await cookies();
   const authed = isValidSessionToken(store.get(SESSION_COOKIE)?.value);
@@ -69,82 +58,42 @@ export default async function AdminPage({
     );
   }
 
-  /* 编辑目标：走 query 而不是客户端 state，这样刷新和分享链接都能回到同一
-     篇。slug 只用于定位，实际内容从磁盘读，不接受客户端传来的正文。 */
-  let initial: EditorInitial | undefined;
-  if (edit && (kind === "post" || kind === "moment")) {
-    const collection = kind === "post" ? posts : moments;
-    const found = collection.readRuntime(lang, edit);
-    if (found) {
-      initial = {
-        kind,
-        slug: edit,
-        title: String(found.data.title ?? ""),
-        tags: Array.isArray(found.data.tags) ? (found.data.tags as string[]).join(", ") : "",
-        body: found.content.trim(),
-      };
-    }
-  }
+  /*
+   * 这里给客户端的是「服务器视图」—— 也就是这台机器上 git 副本的内容，
+   * 外加还没进 git 的遗留草稿。它**只在部署时更新**，所以刚提交的文章
+   * 不会出现在这里。
+   *
+   * 客户端挂载后还会自己从 GitHub 拉一份实时列表，两边合并后才是完整的。
+   * 只靠这一份的话，用户提交完会看到文章"消失"，像是丢了数据。
+   */
+  const collect = (
+    kind: "post" | "moment",
+    items: ReturnType<typeof posts.getItems>,
+    isInGit: (l: Lang, slug: string) => boolean,
+  ): ServerPost[] =>
+    items.map((i) => ({
+      slug: i.slug,
+      title: i.title,
+      date: i.date,
+      kind,
+      // deployed = 在服务器 git 副本里（即"已上线"）；否则是遗留的服务器草稿
+      deployed: isInGit(lang, i.slug),
+    }));
 
-  const runtimeEntries: RuntimeEntry[] = [
-    ...posts.listRuntime(lang).map((i) => ({ kind: "post" as const, slug: i.slug, title: i.title, date: i.date })),
-    ...moments.listRuntime(lang).map((i) => ({ kind: "moment" as const, slug: i.slug, title: i.title, date: i.date })),
+  const serverPosts: ServerPost[] = [
+    ...collect("post", posts.getItems(lang), posts.isInGit),
+    ...collect("moment", moments.getItems(lang), moments.isInGit),
   ].sort((a, b) => (a.date > b.date ? -1 : 1));
-
-  // 仓库收录的内容只读。删掉它下一次 `git reset --hard` 会复活；编辑它
-  // 下一次部署会被静默回滚——"我改了但它变回去了"比不提供功能更糟。
-  //
-  // 用 listGit 而不是 getItems：后者是 git + runtime 的并集，会把云端刚
-  // 发布的文章也算进这一栏，导致同一篇在两个列表里各出现一次。
-  const repoEntries = posts.listGit(lang);
-
-  const errorText =
-    error === "empty" ? t.admin.errEmpty
-    : error === "slug" ? t.admin.errSlug
-    : error === "notfound" ? t.admin.errNotFound
-    : null;
 
   return (
     <Container className="max-w-2xl py-16">
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-fg">
-            {t.admin.title}
-          </h1>
-          <p className="mt-2 text-sm text-fg-muted">{t.admin.subtitle}</p>
-        </div>
-        <form action={logoutAction}>
-          <input type="hidden" name="lang" value={lang} />
-          <button
-            type="submit"
-            className="shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
-          >
-            {t.admin.signOut}
-          </button>
-        </form>
-      </header>
-
-      {ok && (
-        <p
-          role="status"
-          className="mb-5 rounded-xl border border-accent/40 bg-accent-soft/40 px-4 py-2.5 text-sm text-fg"
-        >
-          {t.admin.saved} <span className="font-mono text-xs">{ok}</span>
-        </p>
-      )}
-      {errorText && (
-        <p
-          role="alert"
-          className="mb-5 rounded-xl border border-red-500/40 px-4 py-2.5 text-sm text-red-600 dark:text-red-400"
-        >
-          {errorText}
-        </p>
-      )}
-
-      <Editor
+      <AdminPanel
         lang={lang}
-        initial={initial}
+        serverPosts={serverPosts}
         labels={{
+          title: t.admin.title,
+          subtitle: t.admin.subtitle,
+          signOut: t.admin.signOut,
           kindPost: t.admin.kindPost,
           kindMoment: t.admin.kindMoment,
           fieldTitle: t.admin.fieldTitle,
@@ -154,52 +103,25 @@ export default async function AdminPage({
           publish: t.admin.publish,
           save: t.admin.save,
           cancel: t.admin.cancel,
+          edit: t.admin.edit,
+          remove: t.admin.remove,
+          confirmRemove: t.admin.confirmRemove,
+          saved: t.admin.saved,
+          empty: t.admin.empty,
           tagsHint: t.admin.tagsHint,
+          errEmpty: t.admin.errEmpty,
+          errNotFound: t.admin.errNotFound,
+          stateLive: t.admin.stateLive,
+          statePending: t.admin.statePending,
+          stateDraft: t.admin.stateDraft,
+          statePendingDelete: t.admin.statePendingDelete,
+          tokenMissing: t.admin.tokenMissing,
+          loading: t.admin.loading,
+          publishedHint: t.admin.publishedHint,
+          viewCommit: t.admin.viewCommit,
+          allPosts: t.admin.allPosts,
         }}
       />
-
-      <section className="mt-12">
-        <h2 className="mb-4 text-sm font-semibold tracking-wide text-fg-muted uppercase">
-          {t.admin.published}
-        </h2>
-        {runtimeEntries.length === 0 ? (
-          <p className="text-sm text-fg-subtle">{t.admin.empty}</p>
-        ) : (
-          <RuntimeList
-            lang={lang}
-            entries={runtimeEntries}
-            labels={{
-              edit: t.admin.edit,
-              remove: t.admin.remove,
-              confirmRemove: t.admin.confirmRemove,
-              kindPost: t.admin.kindPost,
-              kindMoment: t.admin.kindMoment,
-            }}
-          />
-        )}
-      </section>
-
-      <section className="mt-10">
-        <h2 className="mb-1 text-sm font-semibold tracking-wide text-fg-muted uppercase">
-          {t.admin.repoManaged}
-        </h2>
-        <p className="mb-4 text-xs text-fg-subtle">{t.admin.repoManagedHint}</p>
-        <ul className="flex flex-col gap-1">
-          {repoEntries.map((e) => (
-            <li
-              key={e.slug}
-              className="flex items-center gap-3 rounded-xl border border-border/60 px-4 py-2.5"
-            >
-              <span className="min-w-0 flex-1 truncate text-sm text-fg-muted">
-                {e.title}
-              </span>
-              <span className="shrink-0 font-mono text-xs text-fg-subtle">
-                {e.date}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
     </Container>
   );
 }

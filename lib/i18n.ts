@@ -80,6 +80,15 @@ type Dictionary = {
     errEmpty: string;
     errSlug: string;
     errNotFound: string;
+    stateLive: string;
+    statePending: string;
+    stateDraft: string;
+    statePendingDelete: string;
+    tokenMissing: string;
+    loading: string;
+    publishedHint: string;
+    viewCommit: string;
+    allPosts: string;
   };
   resume: {
     title: string;
@@ -167,7 +176,8 @@ export const dictionaries: Record<Lang, Dictionary> = {
       wrongPassword: "密码不正确。",
       lockedOut: "尝试次数过多，请 {minutes} 分钟后再试。",
       title: "发布",
-      subtitle: "写点东西。发布后立刻生效，不需要重新部署。",
+      subtitle:
+        "在本地或在这里改，都是同一批文章。保存会提交到 GitHub 仓库，约 1–2 分钟后自动上线。",
       kindPost: "长文",
       kindMoment: "随笔",
       fieldTitle: "标题",
@@ -189,6 +199,16 @@ export const dictionaries: Record<Lang, Dictionary> = {
       errEmpty: "标题和正文都不能为空。",
       errSlug: "地址标识不合法，操作已取消。",
       errNotFound: "找不到这篇内容，可能已被删除。",
+      stateLive: "已上线",
+      statePending: "待部署",
+      stateDraft: "服务器草稿",
+      statePendingDelete: "已删除，待部署生效",
+      tokenMissing:
+        "服务端没有配置 GITHUB_SYNC_TOKEN，暂时无法保存。在仓库 Secrets 里加上它再重新部署一次。",
+      loading: "加载中…",
+      publishedHint: "已提交到 GitHub，约 1–2 分钟后自动部署上线。",
+      viewCommit: "查看提交",
+      allPosts: "全部文章",
     },
     resume: {
       title: "简历",
@@ -299,7 +319,8 @@ export const dictionaries: Record<Lang, Dictionary> = {
       wrongPassword: "Incorrect password.",
       lockedOut: "Too many attempts. Try again in {minutes} minutes.",
       title: "Publish",
-      subtitle: "Write something. It goes live immediately, no redeploy.",
+      subtitle:
+        "Edit here or locally — it is the same set of posts. Saving commits to the GitHub repository and goes live in about 1–2 minutes.",
       kindPost: "Article",
       kindMoment: "Moment",
       fieldTitle: "Title",
@@ -321,6 +342,16 @@ export const dictionaries: Record<Lang, Dictionary> = {
       errEmpty: "Title and body cannot be empty.",
       errSlug: "Invalid slug, nothing was changed.",
       errNotFound: "That item no longer exists.",
+      stateLive: "Live",
+      statePending: "Pending deploy",
+      stateDraft: "Server draft",
+      statePendingDelete: "Deleted, pending deploy",
+      tokenMissing:
+        "GITHUB_SYNC_TOKEN is not configured on the server, so saving is disabled. Add it to the repository secrets and redeploy.",
+      loading: "Loading…",
+      publishedHint: "Committed to GitHub — live in about 1–2 minutes.",
+      viewCommit: "View commit",
+      allPosts: "All posts",
     },
     resume: {
       title: "Resume",

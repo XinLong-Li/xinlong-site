@@ -37,7 +37,7 @@ app/
     layout.tsx         根布局：<html lang>、主题 Provider、导航、页脚
     page.tsx           首页
     blog/ moments/ projects/   三类内容
-    admin/             网页端发帖后台（登录 + 编辑器 + 已发布列表）
+    admin/             网页端发帖后台（登录 + 编辑器；写入直接提交 GitHub）
     [...rest]/         兜底路由，触发 404
     fonts/             自托管字体
   api/health/          健康检查（供 uptime 监控使用）
@@ -52,7 +52,8 @@ lib/
 
 content/
   posts/ projects/     仓库策展内容，git 跟踪，**只读**
-  runtime/             网页端发布的内容，gitignored，可改可删
+  runtime/             【遗留】旧的运行时发布机制留下的草稿，只读；
+                       编辑一次即提交进 git，下次部署后由脚本清理
 ```
 
 两类内容的读取规则：**slug 冲突时 git 版本优先**。管理界面把仓库内容
@@ -143,9 +144,16 @@ revalidatePath(`/${lang}/blog/${slug}`);   // 删除时也必须，否则留下�
 不写那行，被删的文章会以 200 继续对外服务（软 404，会被搜索引擎收录）。
 
 **10. `content/runtime/` 必须保持被 gitignore**
-网页端发布的帖子写在这里。它必须能扛过部署流程里的 `git reset --hard`
-——那条命令只重置**已跟踪**文件。一旦有人 `git add -A` 把它提交进去，
-这个保证就静默失效了。用 `git check-ignore -v content/runtime/...` 正面确认。
+
+那套「运行时发布」机制已经拆掉了 —— 内容现在一律提交 git。但服务器磁盘上
+还留着当初从后台发的几篇草稿，读路径仍然会读它们（否则内容会从站点消失）。
+
+它必须能扛过部署流程里的 `git reset --hard` —— 那条命令只重置**已跟踪**
+文件。一旦有人 `git add -A` 把它提交进去，这个保证就静默失效了。
+用 `git check-ignore -v content/runtime/...` 正面确认。
+
+部署脚本里的 `[5/9] prune archived drafts` 会在每次部署后删掉那些 slug 已经
+存在于 git 的副本 —— 不删的话，哪天从 git 删掉一篇文章，runtime 副本会让它复活。
 
 **11. 服务器必须先配好 `.env`，否则登录永远失败**
 ```
@@ -191,7 +199,33 @@ TypeScript 5.6 引入的 `ArrayIterator`）。`Buffer` 继承 DOM 那份，而
 **所有** Server Action，表现为"点了发布没反应"且错误只在服务端日志里。
 真正的鉴权边界在每个 action 里的 `requireAuth()`。
 
-**15. 网页端发布的内容没有备份**
-`content/runtime/` 只存在于那一台服务器上。定期 `scp -r <APP_DIR>/content/runtime ./backup/`。
+**15. 内容现在全部在 git 里，不再有「只存在服务器上」的东西**
+
+这一条以前是「网页端发布的内容没有备份」。改成提交 git 之后这个缺口消失了 ——
+本地写和云端写是同一批文章，都在仓库里。
 这是"发布不依赖部署链路"换来的代价——部署链路的 `git fetch` 会间歇性
 被 TLS 重置（`GnuTLS recv error`），所以发布必须绕开它。
+
+**16. 后台保存需要 `GITHUB_SYNC_TOKEN`**
+
+后台的保存/删除**直接调 GitHub Contents API**，不经过服务端。原因是这台
+腾讯云服务器推不了 GitHub —— 访问 github.com 会被 TLS 间歇重置（就是第 3 条
+那个 `git fetch` 的老问题），push 走同一条链路。
+
+token 是 fine-grained PAT：
+
+- Repository access：仅 `xinlong-li/xinlong-site`
+- Permissions：**Contents: Read and write**（必须）
+- 存成仓库 Secret `GITHUB_SYNC_TOKEN`，部署时由工作流写进服务器 `.env`
+
+**它会过期。** 到期后后台保存会失败，出错信息是 GitHub 返回的
+`HTTP 401 Bad credentials（token 可能已过期或被撤销）`—— 看到 401 先去
+检查 token，不要怀疑密码或网络。续期就是新建一个 token 覆盖这个 Secret。
+
+**未配置时**：站点照常运行，后台能看不能存，页面顶部会明确写出原因。
+`getRepoRefAction` 对这种情况**返回**错误而不是抛 —— server action 抛出的
+异常在生产构建里会被 React 包装成 `Minified React error #441`，用户看到的
+是一个错误码而不是"去哪里配 token"。预期内的失败一律返回，不抛。
+
+**本地开发**：在 `.env` 里加 `GITHUB_SYNC_TOKEN="github_pat_..."` 即可；
+不加的话后台会按"未配置"处理，不影响其他功能。

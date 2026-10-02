@@ -57,3 +57,16 @@ export function uniqueSlug(
   while (used.has(`${base}-${n}`)) n += 1;
   return `${base}-${n}`;
 }
+
+/**
+ * slug 合法性校验。
+ *
+ * 这不是防御性编程 —— slug 会被拼进 GitHub Contents API 的请求路径
+ * （`/contents/content/posts/zh/<slug>.md`），所以它必须只含有文件名的
+ * 合法字符。允许 `..` 或 `/` 就等于允许构造出目录之外的路径。
+ *
+ * 服务端和客户端都要用它：客户端在写入前，服务端在信任任何传来的 slug 前。
+ */
+export function isSafeSlug(slug: string): boolean {
+  return /^[a-z0-9][a-z0-9-]*$/.test(slug) && slug.length <= 120;
+}
