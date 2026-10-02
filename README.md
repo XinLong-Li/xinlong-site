@@ -9,7 +9,7 @@
 - **主题**：`next-themes`，class 策略，默认跟随系统
 - **内容**：Markdown（`gray-matter` + `remark`），存放于 `content/`
 - **图标**：`lucide-react`
-- **部署**：腾讯云 + PM2，由 GitHub Actions 自动部署
+- **部署**：GitHub Actions 在 runner 上构建 → 推 standalone 产物 → 腾讯云 + PM2
 
 ## 本地运行
 
@@ -21,9 +21,13 @@ npm run dev        # http://localhost:3000
 其他脚本：
 
 ```bash
-npm run build      # 生产构建
-npm start          # 启动生产服务
-npm run typecheck  # tsc --noEmit（需先跑过一次 build，见下方说明）
+npm run build             # 生产构建
+npm start                 # 启动生产服务
+npm run typecheck         # tsc --noEmit（需先跑过一次 build，见下方说明）
+
+# 部署链路，平时用不到，排查部署问题时用
+npm run build:standalone  # 产出部署用的自包含应用（等价于 BUILD_STANDALONE=1 npm run build）
+npm run package:release   # 打成 release.tar.gz
 ```
 
 > `npm run typecheck` 依赖 `.next/types/` 下的生成类型，因此全新克隆后需先
@@ -44,6 +48,9 @@ app/
   globals.css          设计令牌 + 基础层
 proxy.ts               根路径语言协商与重定向
 components/            UI 组件
+scripts/
+  package-release.sh   在 runner 上把构建产物打成 release.tar.gz
+  deploy-release.sh    在服务器上铺开产物、重启、健康检查（经 stdin 送达）
 lib/
   i18n.ts              类型化字典（两种语言键不一致会在编译期报错）
   content.ts           posts / projects / moments 的统一读写
@@ -70,10 +77,58 @@ content/
 
 ## 部署
 
-推送到 `main` 会自动触发 `.github/workflows/deploy-tencent.yml`：
-在腾讯云服务器上 `git reset --hard` → `npm ci` → `npm run build` → PM2 重启。
+推送到 `main` 会自动触发 `.github/workflows/deploy-tencent.yml`。
 
-`ecosystem.config.js` 配置 PM2（fork 模式，端口 3000）。
+**在 GitHub runner 上构建，把产物推给服务器。服务器不访问外网，也没有 git 仓库的角色。**
+
+```
+push → runner: npm ci → BUILD_STANDALONE=1 npm run build → package-release.sh
+                ↓ 17MB 的 tar 流，直接喂给远端的 cat
+             服务器: 解压到 .release/ → 校验 → 换 content → 换应用 → 重启 → 健康检查
+```
+
+### 为什么不是"SSH 上去 git reset + npm ci + npm build"
+
+那套要**服务器主动访问 github.com**，而这条跨境链路会被 TLS 间歇重置：
+
+```
+GnuTLS recv error (-110): The TLS connection was non-properly terminated
+curl 16 Error in the HTTP2 framing layer
+Failed to connect to github.com port 443 after 130321 ms
+```
+
+实测成功率大约一半，且和代码完全无关。重跑能过，但**内容统一走 git 之后，
+每保存一篇文章都会触发一次部署** —— 部署不稳定就等于发文不稳定。
+
+改成推产物之后，服务器只被动接收一个文件，`git fetch` / `npm ci` / `next build`
+全部消失，这一类故障从根上没有了。
+
+### 三个脚本的分工
+
+| 文件 | 在哪跑 | 为什么分开 |
+|---|---|---|
+| `scripts/package-release.sh` | runner | 唯一能在本地验证的一段，所以逻辑尽量放这里 |
+| `scripts/deploy-release.sh` | 服务器（**经 stdin，不存在于服务器磁盘**） | 版本化、能在本地跑真实目录验证，也没有"首次部署时脚本还不存在"的问题 |
+| `.github/workflows/deploy-tencent.yml` | runner | 只剩下编排：装依赖、构建、打包、传、调用上面两个 |
+
+部署脚本刻意**不做**的事：不碰 `.env`、不碰 `content/runtime/`、不碰 `logs/`。
+解压与校验都发生在替换之前，所以任何一步失败，服务器仍在跑旧版本。
+
+本地复现整条链路：
+
+```bash
+npm run build:standalone
+npm run package:release        # 产出 release.tar.gz
+```
+
+### PM2
+
+`ecosystem.config.js` 配置 PM2（fork 模式，端口 3000）。**入口是 standalone 产物自带的
+`server.js`，不是 `next` CLI** —— 服务器上已经没有 `node_modules/.bin/next` 了。
+
+`.env` 里的三个键**不写在 PM2 的 `env:` 块里**：`server.js` 走 Next 的 `BaseServer`，
+构造时无条件调用 `loadEnvConfig(dir)`，会自己把项目根目录的 `.env` 读进
+`process.env`。两处都写会引入优先级歧义，而症状是"密码明明改了却登不上"。
 
 ## 几个容易踩回去的坑
 
@@ -95,8 +150,10 @@ content/
 环境误报故障，且本地怎么测都测不出来。
 
 **4. 字体必须自托管**
-部署时会在腾讯云服务器上再跑一次构建，而大陆服务器通常访问不了 Google。
-用 `next/font/local` + 仓库内的 woff2，构建期零网络依赖。
+用 `next/font/local` + 仓库内的 woff2，构建期与运行期都不依赖 Google。
+（构建已经从腾讯云服务器挪到了 GitHub runner，那条"服务器连不上 Google"
+的理由不再成立；但自托管仍然是对的：访客不必再去第三方拉字体，也少一次
+渲染阻塞。构建的确定性顺带保住了 —— 不依赖外网就不会因为外网抽风而失败。）
 只取 latin 子集，中文由系统字体栈兜底（中文 webfont 是数 MB 级）。
 
 **5. Tailwind v4 的深色模式需要 `@custom-variant`**
@@ -148,29 +205,57 @@ revalidatePath(`/${lang}/blog/${slug}`);   // 删除时也必须，否则留下�
 那套「运行时发布」机制已经拆掉了 —— 内容现在一律提交 git。但服务器磁盘上
 还留着当初从后台发的几篇草稿，读路径仍然会读它们（否则内容会从站点消失）。
 
-它必须能扛过部署流程里的 `git reset --hard` —— 那条命令只重置**已跟踪**
-文件。一旦有人 `git add -A` 把它提交进去，这个保证就静默失效了。
-用 `git check-ignore -v content/runtime/...` 正面确认。
+**它只活在服务器上，这一点由两道独立机制保证**，所以比原来更稳：
 
-部署脚本里的 `[5/9] prune archived drafts` 会在每次部署后删掉那些 slug 已经
-存在于 git 的副本 —— 不删的话，哪天从 git 删掉一篇文章，runtime 副本会让它复活。
+- `scripts/package-release.sh` 重建 `content/` 时只从 `posts` / `moments` /
+  `projects` 三棵树里取，产物里永远不会有 `runtime`；`deploy-release.sh`
+  还会在解压后正面断言一次，发现就拒绝部署
+- `deploy-release.sh` 替换 content 时只删上面那三个目录，`content/runtime`
+  不在其中，所以原封不动
 
-**11. 服务器必须先配好 `.env`，否则登录永远失败**
+仍然要 gitignore 的原因变了：不再是"扛过 `git reset --hard`"（那条命令已经
+不在链路里了），而是**本地开发时的 `content/runtime/` 和服务器上的不是同一批
+文件**。把它提交上去只会往仓库里塞进本地的临时草稿。
+
+`[4/8] 清理已归档的草稿` 会在每次部署后删掉那些 slug 已经出现在新产物里的
+runtime 副本 —— 不删的话，哪天从 git 删掉一篇文章，runtime 副本会让它复活。
+
+**11. `.env` 由工作流派生，缺了它登录永远失败**
+
+`.env` **不手工创建**，由 GitHub Secrets 声明式生成：
+
 ```
-ADMIN_PASSWORD_HASH="<salt-hex>:<scrypt-key-hex>"
-SESSION_SECRET="<openssl rand -hex 32>"
+GitHub Secrets（加密，只写不读）
+   ↓ 部署时 scripts/deploy-release.sh 的 [6/8]
+服务器 $APP_DIR/.env（600 权限，被 gitignore）
+   ↓ server.js 启动时由 Next 的 loadEnvConfig 读取
+lib/auth.ts（登录） / lib/github.ts（云端保存）
 ```
+
+| Secret | 缺了会怎样 |
+|---|---|
+| `ADMIN_PASSWORD_HASH` | **登录永远失败**，且症状伪装成"密码不对" |
+| `SESSION_SECRET` | 签发会话时抛错，登录 500 |
+| `GITHUB_SYNC_TOKEN` | 站点照常跑，**后台能看不能存**，页面顶部会写明原因 |
+
+前两个必须**同时**配置（只配一个会被 Preflight 拦下）。第三个独立可选。
+两个都没配时走 SKIP 分支，服务器上现有的 `.env` 保持原样。
+
+改密码：本地生成新哈希 → 覆盖 GitHub 上那个 Secret → 触发一次部署。
 生成哈希：
-```bash
-node -e 'const{scryptSync,randomBytes}=require("node:crypto");const s=randomBytes(16);const k=scryptSync(process.argv[1],s,64);console.log(s.toString("hex")+":"+k.toString("hex"))' '你的密码'
-```
-写完重启即可：`pm2 restart xinlong-site`。
 
-**关于 `--update-env`**：对 `.env` 文件里的值**不需要**——Next 在进程启动时
-自己会读项目根目录的 `.env`（`next start` 内置了这一步），PM2 的环境快照
-与它无关。实测：不导出任何 shell 变量、只靠 `.env`，登录正常；把 `.env`
-移走后重启，登录立即失效并在服务端日志打出"未配置"。
-只有当你把变量 `export` 在 SSH 会话里时，才需要 `--update-env` 让 PM2 捡到。
+```bash
+printf '设置后台密码（输入时不显示）: '; read -s PW; echo
+printf '%s' "$PW" | node -e 'let p="";process.stdin.on("data",function(d){p+=d});process.stdin.on("end",function(){var c=require("node:crypto");var s=c.randomBytes(16),k=c.scryptSync(p,s,64);console.log(s.toString("hex")+":"+k.toString("hex"))})'
+unset PW
+```
+
+已签发会话最长 7 天（无状态 cookie 收不回）。要立即踢掉所有会话，就同时覆盖
+`SESSION_SECRET` —— 所有人重新登录，包括你自己。
+
+**关于 `--update-env`**：不需要。`server.js` 是 Next 的 standalone 入口，走的是
+`BaseServer`，构造时无条件调用 `loadEnvConfig(dir)`（`dir` 就是 `server.js`
+所在目录，也就是项目根）。PM2 的 `env:` 块里刻意**不**放这三个键。
 
 缺 `ADMIN_PASSWORD_HASH` 时登录会失败，而且**看起来就像密码输错了**。
 服务端日志里"未配置"和"密码不匹配"是两条不同的消息，先看日志再去怀疑密码：
@@ -203,14 +288,14 @@ TypeScript 5.6 引入的 `ArrayIterator`）。`Buffer` 继承 DOM 那份，而
 
 这一条以前是「网页端发布的内容没有备份」。改成提交 git 之后这个缺口消失了 ——
 本地写和云端写是同一批文章，都在仓库里。
-这是"发布不依赖部署链路"换来的代价——部署链路的 `git fetch` 会间歇性
-被 TLS 重置（`GnuTLS recv error`），所以发布必须绕开它。
+代价是发布要等一次部署（1–2 分钟），而部署的可靠性由「在 runner 上构建、
+推产物」保证，见上面「部署」一节。
 
 **16. 后台保存需要 `GITHUB_SYNC_TOKEN`**
 
 后台的保存/删除**直接调 GitHub Contents API**，不经过服务端。原因是这台
-腾讯云服务器推不了 GitHub —— 访问 github.com 会被 TLS 间歇重置（就是第 3 条
-那个 `git fetch` 的老问题），push 走同一条链路。
+腾讯云服务器访问不了 GitHub —— 会被 TLS 间歇重置，push 走的是和 `git fetch`
+同一条跨境链路。这也正是部署改成"在 runner 上构建"的原因，见「部署」一节。
 
 token 是 fine-grained PAT：
 
@@ -229,3 +314,53 @@ token 是 fine-grained PAT：
 
 **本地开发**：在 `.env` 里加 `GITHUB_SYNC_TOKEN="github_pat_..."` 即可；
 不加的话后台会按"未配置"处理，不影响其他功能。
+
+**17. 打包产物时必须排除 `.env` —— Next 会把它复制进 `.next/standalone`**
+
+Next 的输出追踪会把项目根目录的 `.env` 一起复制到 standalone 目录里。实测确认。
+
+原因是 `lib/content.ts` 里有 `path.join(process.cwd(), "content", ...)` 这类
+**动态文件系统访问**，Turbopack 无法静态推断会读哪些文件，于是保守地把整个
+项目都纳入追踪（构建时会打出 `Dynamic filesystem access causes tracing of the
+whole project`，那句话说的就是这件事）。`.env`、`app/`、`lib/` 这些因此都在
+`.next/standalone/` 里。
+
+如果打包时不管它，解压到服务器上就会**覆盖服务器那份真正的 `.env`**：登录
+会用一个本地测试密码，而且本地密钥被推到了线上。症状是"部署完之后密码突然
+不对了"，而没有任何一步报错。
+
+`package-release.sh` 里先 `rm -f` 再正面断言，`deploy-release.sh` 解压后再断言
+一次 —— 两道闸门，且都是**拒绝部署**而不是警告。
+
+**18. `$VAR` 后面紧跟中文标点会被 bash 当成变量名的一部分**
+
+不是笔误，是真实踩到并且会让**每一次部署都失败**的坑：
+
+```bash
+PORT=2222
+echo "$PORT（括号）"     # bash: PORT<乱码>: unbound variable
+echo "${PORT}（括号）"   # 2222（括号）
+```
+
+bash 的变量名解析会把紧随其后的多字节字符吃进去。配合 `set -u`，脚本直接
+以 "unbound variable" 终止。脚本正文里凡是中文出现在变量后面的地方，
+**一律写成 `${VAR}`**。用这条找残留：
+
+```bash
+grep -rnP '\$[A-Za-z_][A-Za-z0-9_]*(?=[^\x00-\x7F])' scripts/ .github/workflows/
+```
+
+**19. `output: 'standalone'` 由 `BUILD_STANDALONE=1` 控制，不是常开**
+
+部署需要 standalone 产物，但无条件打开会让每次本地构建都多产出一份
+`.next/standalone`，并且 `npm start` 每次打出 `"next start" does not work
+with "output: standalone"` 的警告（`next/dist/server/next.js` —— 只是警告，
+功能正常）。所以本地 `npm run build` 与 `npm start` 保持原样，只有工作流和
+`npm run build:standalone` 走 standalone。
+
+另一个容易搞反的点：**standalone 产物不含 `.next/static` 和 `public`**。
+Next 不会自动带上它们，必须手工复制进去 —— 漏了的表现是页面能打开但完全
+没有样式。
+
+服务器上那个 `.git/` 目录是上一套部署方式留下的，现在没有任何东西会读它。
+留着无害，可以随手删掉。

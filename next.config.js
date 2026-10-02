@@ -1,6 +1,19 @@
+/**
+ * 生产部署是「在 runner 上构建 → 打包产物 → 推给服务器」，所以需要 standalone
+ * 输出（一个自带精简 node_modules 的可直接 `node server.js` 启动的目录）。
+ *
+ * 为什么用环境变量开关而不是无条件打开：`output: 'standalone'` 会让
+ * `next start` 每次打出 `"next start" does not work with "output: standalone"`
+ * 的警告（next/dist/server/next.js:243 —— 那只是警告，功能正常），并且每次
+ * 本地构建都额外产出一份 .next/standalone。本地开发与 `npm start` 预览保持
+ * 原样，只有部署工作流设 BUILD_STANDALONE=1。
+ */
+const standalone = process.env.BUILD_STANDALONE === "1";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: standalone ? "standalone" : undefined,
 
   experimental: {
     serverActions: {

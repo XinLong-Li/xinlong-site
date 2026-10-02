@@ -1,5 +1,20 @@
 name: Deploy to Tencent Cloud
 
+# 部署模型：**在 runner 上构建，把产物推给服务器。**
+#
+# 为什么改掉原来那套「SSH 上去 git fetch + npm ci + npm run build」：
+# 那条链路要服务器主动访问 github.com，而这条跨境链路会被 TLS 间歇重置
+# （GnuTLS recv error -110 / HTTP2 framing error / 连接超时），失败率不低，
+# 且和代码完全无关。现在服务器只被动接收一个 tar 包，不再访问外网。
+#
+# 这一步从"锦上添花"变成"必须做"，是因为内容统一走 git 之后，**每保存一篇
+# 文章都会触发一次部署** —— 部署不稳定等于发文不稳定。
+#
+# 链路上不再有 appleboy/ssh-action，因此也就没有了它的 `envs:` / `env:` 陷阱
+# （那个陷阱的表现是变量静默为空）。改用原生 ssh + stdin：
+#   - 产物：tar 流直接喂给远端 `cat >`，没有中间文件
+#   - 部署脚本：从 runner 的 checkout 直接喂给远端 bash 的 stdin，
+#     所以它不存在于服务器上，是版本化的，而且能在本地跑真实目录验证
 on:
   push:
     branches: [ main ]
@@ -20,8 +35,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      # BUILD_STANDALONE=1 才会产出 output: 'standalone' 的那份自包含应用。
+      # 本地不加这个变量，是为了让 `npm start` 不被打出 "does not work with
+      # output: standalone" 的警告、也不多产出一份 .next/standalone。
+      - name: Build (standalone)
+        run: npm run build:standalone
+
+      - name: Package release artifact
+        run: bash scripts/package-release.sh
 
       - name: Preflight - check required secrets
         env:
@@ -29,6 +50,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           APP_DIR: ${{ secrets.APP_DIR }}
           ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
@@ -37,157 +59,119 @@ jobs:
           set -e
           for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
             if [ -z "${!var}" ]; then
-              echo "❌ Missing required secret: $var" >&2
+              echo "❌ 缺少必需的 Secret: $var" >&2
               exit 1
             fi
           done
-          echo "✅ Deploy secrets present"
+          echo "✅ 部署相关的 Secret 齐全"
 
-          # 这两个是**可选**的：都配了才会在服务器上生成 .env。
+          # 这两个必须同时配或同时不配：都配了才会在服务器上重写 .env。
           have_hash=$([ -n "$ADMIN_PASSWORD_HASH" ] && echo yes || echo no)
           have_secret=$([ -n "$SESSION_SECRET" ] && echo yes || echo no)
           if [ "$have_hash" = yes ] && [ "$have_secret" = yes ]; then
-            echo "✅ ADMIN_PASSWORD_HASH / SESSION_SECRET 已配置 —— 部署时会写入 .env"
+            echo "✅ ADMIN_PASSWORD_HASH / SESSION_SECRET 已配置 —— 部署时会重写服务器 .env"
           elif [ "$have_hash" = no ] && [ "$have_secret" = no ]; then
-            echo "· ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置 —— 部署会跳过 .env（后台登录不可用）"
+            echo "· ADMIN_PASSWORD_HASH / SESSION_SECRET 未配置 —— 服务器 .env 保持原样"
           else
-            echo "❌ 这两个必须同时配置或同时不配置（当前 hash=$have_hash secret=$have_secret）" >&2
+            echo "❌ 这两个必须同时配置或同时不配置（当前 hash=${have_hash} secret=${have_secret}）" >&2
             exit 1
           fi
 
-          # GITHUB_SYNC_TOKEN 完全独立：没有它站点照常跑，只是后台的云端
-          # 保存功能不可用（会提示"未配置 token"）。
           if [ -n "$GITHUB_SYNC_TOKEN" ]; then
             echo "✅ GITHUB_SYNC_TOKEN 已配置 —— 后台可以在云端写文章"
           else
             echo "· GITHUB_SYNC_TOKEN 未配置 —— 后台只能看，不能保存"
           fi
 
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.0.0
-        # ⚠️ 这个 env: 块不能删。
-        #
-        # `with.envs` 只声明「要转发哪些变量名」，**值必须由步骤的 env: 提供**。
-        # 少了它，这两个变量在 action 容器里根本不存在，envs 会转发空值 ——
-        # 即使 Secrets 配好了，服务器上也拿到不到任何东西。
-        # （最初就是漏了这块，导致脚本在 git reset 之后静默退出。）
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            echo "✅ SSH_KNOWN_HOSTS 已配置 —— SSH 会严格校验服务器主机密钥"
+          else
+            echo "· SSH_KNOWN_HOSTS 未配置 —— 首次连接自动信任服务器主机密钥（可用 ssh-keyscan 取，见 README）"
+          fi
+
+      - name: Configure SSH
         env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          PORT="${SSH_PORT:-22}"
+          case "$PORT" in ''|*[!0-9]*) PORT=22 ;; esac
+
+          # 配了 SSH_KNOWN_HOSTS 就钉死主机密钥；没配则首次连接自动信任。
+          # 钉死更强：runner 是一次性的，accept-new 实际上等于每次都"首次"。
+          if [ -n "${SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+            HOST_KEY_CHECKING=yes
+          else
+            HOST_KEY_CHECKING=accept-new
+          fi
+
+          # 写进 ssh_config 而不是每次敲一长串 -o：公钥、端口、超时集中一处，
+          # 上传和部署两步都复用同一个 Host 别名。
+          cat > ~/.ssh/config <<EOF
+          Host deploy-target
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port $PORT
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking $HOST_KEY_CHECKING
+            ConnectTimeout 30
+            ServerAliveInterval 15
+            ServerAliveCountMax 8
+            TCPKeepAlive yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+          # 变量一律用 ${} 包起来：紧跟其后的中文标点会被 bash 当成变量名的一部分，
+          # set -u 下直接报 unbound variable 并终止这一步。
+          echo "✅ SSH 已配置：${SSH_USER}@${SSH_HOST}:${PORT}（主机密钥校验=${HOST_KEY_CHECKING}）"
+
+      - name: Upload artifact
+        env:
+          APP_DIR: ${{ secrets.APP_DIR }}
+        run: |
+          set -euo pipefail
+          echo "上传 release.tar.gz（$(du -h release.tar.gz | cut -f1 | tr -d ' ')）→ $APP_DIR/"
+          # 直接流过去，不在服务器上留中间文件、也不重复写盘。
+          # pipefail 保证 ssh 侧失败（比如磁盘满）不会被 cat 的成功掩盖 ——
+          # 这正是 bash 默认行为下最容易漏掉的一类失败。
+          cat release.tar.gz | ssh deploy-target "cat > '$APP_DIR/release.tar.gz'"
+          echo "✅ 上传完成"
+
+      - name: Deploy on server
+        env:
+          APP_DIR: ${{ secrets.APP_DIR }}
           ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           GITHUB_SYNC_TOKEN: ${{ secrets.GITHUB_SYNC_TOKEN }}
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script_stop: true
-          # 用变量而非字面值，脚本正文里没有可泄露的内容。
-          # GitHub 也会把日志里的这些值自动打码成 ***。
-          envs: ADMIN_PASSWORD_HASH,SESSION_SECRET,GITHUB_SYNC_TOKEN
-          script: |
-            set -e
-            echo "[1/9] cd to app dir"
-            cd ${{ secrets.APP_DIR }}
-
-            # Ensure repo exists; clone if missing
-            if [ ! -d .git ]; then
-              git clone https://github.com/${{ github.repository }} .
-            fi
-
-            echo "[2/9] git fetch"
-            git fetch --all
-
-            echo "[3/9] git reset"
-            git reset --hard origin/main
-
-            echo "[4/9] mkdir logs"
-            mkdir -p logs
-
-            # --- Prune runtime drafts that have since been archived into git ---
-            # content/runtime/ is the leftover from the old "publish at runtime"
-            # mechanism, which is gone: content now goes through git. Editing one
-            # of those drafts commits it to the repo, after which two copies
-            # exist on disk. Reads prefer git so the content stays correct, but
-            # the runtime copy is a hazard -- deleting the post from git would
-            # resurrect it. So drop the copies whose slug now exists in git.
-            # NOTE: use `find`, not a shell glob. An unmatched glob aborts
-            # some shells outright (zsh: "no matches found"; bash with
-            # failglob) and content/runtime/ may well be absent -- it is
-            # empty on a fresh server. `find` returns success either way.
-            echo "[5/9] prune archived drafts"
-            if [ -d content/runtime ]; then
-              find content/runtime -type f -name "*.md" | while read -r f; do
-                rel=${f#content/runtime/}
-                if [ -f "content/$rel" ]; then
-                  rm -f "$f"
-                  echo "  pruned: $rel"
-                fi
-              done
-            fi
-            echo "  prune step done"
-
-            # --- Generate .env declaratively from GitHub Secrets ---
-            # Written only when both required secrets are present; otherwise the
-            # file is left untouched so the feature stays optional. .env is
-            # gitignored, so the `git reset --hard` above ignores it.
-            # This workflow owns the file: anything added by hand is overwritten
-            # on the next deploy.
-            echo "[6/9] write .env (hash=$([ -n "${ADMIN_PASSWORD_HASH:-}" ] && echo yes || echo no) session=$([ -n "${SESSION_SECRET:-}" ] && echo yes || echo no) token=$([ -n "${GITHUB_SYNC_TOKEN:-}" ] && echo yes || echo no))"
-
-            if [ -n "${ADMIN_PASSWORD_HASH:-}" ] && [ -n "${SESSION_SECRET:-}" ]; then
-              echo "  [6a] both required secrets present"
-
-              # Write the two required keys. Subshell umask so the file is
-              # created 0600 directly -- never world-readable, not even
-              # briefly.
-              #
-              # This is deliberately the exact shape that has deployed
-              # successfully before: a plain printf redirected to .env. An
-              # earlier attempt wrapped it in a brace group so the optional
-              # token could be added in the same statement, and that hung
-              # the step with no error output.
-              ( umask 077; printf '%s\n%s\n' \
-                  "ADMIN_PASSWORD_HASH=\"$ADMIN_PASSWORD_HASH\"" \
-                  "SESSION_SECRET=\"$SESSION_SECRET\"" > .env )
-              echo "  [6b] .env written"
-
-              # Append the optional token as a separate simple step, so the
-              # required path above stays untouched.
-              if [ -n "${GITHUB_SYNC_TOKEN:-}" ]; then
-                printf '%s\n' "GITHUB_SYNC_TOKEN=\"$GITHUB_SYNC_TOKEN\"" >> .env
-                echo "  [6c] token appended"
-              else
-                echo "  [6c] no GITHUB_SYNC_TOKEN, skipping"
-              fi
-
-              chmod 600 .env
-
-              # Self-check: required keys must be present, else fail now
-              # rather than leave a broken .env behind.
-              for k in ADMIN_PASSWORD_HASH SESSION_SECRET; do
-                grep -q "^$k=" .env || { echo "ERROR: .env is missing $k" >&2; exit 1; }
-              done
-              echo "  [6d] keys verified"
-
-              echo "OK: .env written ($(wc -c < .env | tr -d ' ') bytes)"
-            else
-              echo "SKIP: ADMIN_PASSWORD_HASH / SESSION_SECRET not set, leaving .env alone"
-            fi
-
-            echo "[7/9] npm ci"
-            npm ci
-
-            echo "[8/9] npm run build"
-            npm run build
-
-            echo "[9/9] pm2 restart"
-            if ! command -v pm2 >/dev/null 2>&1; then
-              npm i -g pm2
-            fi
-            pm2 startOrRestart ecosystem.config.js --env production
-            pm2 save
-
-            echo "DONE"
+        run: |
+          set -euo pipefail
+          # 把三个 Secret 以 shell 赋值的形式拼在脚本前面，一起走 stdin。
+          # 走 stdin 而不是命令行参数，是为了不在服务器的 `ps` 里留下它们。
+          # %q 负责转义 —— token 里出现引号、空格、$ 都不会破。
+          # 值为空时写成 ''，远端脚本据此走 SKIP 分支、保持服务器 .env 不动。
+          {
+            printf 'ADMIN_PASSWORD_HASH=%q\n' "${ADMIN_PASSWORD_HASH:-}"
+            printf 'SESSION_SECRET=%q\n' "${SESSION_SECRET:-}"
+            printf 'GITHUB_SYNC_TOKEN=%q\n' "${GITHUB_SYNC_TOKEN:-}"
+            cat scripts/deploy-release.sh
+          } | ssh deploy-target "bash -s -- '$APP_DIR'"
 
       - name: Notify
-        run: echo "Deployment triggered to Tencent Cloud"
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ 已部署到腾讯云"
+          else
+            echo "❌ 部署失败。服务器大概率仍在跑旧版本 —— 解压与校验都发生在替换之前。"
+          fi
