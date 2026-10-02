@@ -3,6 +3,7 @@ import path from "path";
 import { randomBytes } from "node:crypto";
 import matter from "gray-matter";
 import { remark } from "remark";
+import gfm from "remark-gfm";
 import html from "remark-html";
 import type { Lang } from "@/lib/i18n";
 
@@ -116,8 +117,19 @@ function createCollection(dirName: string) {
     return items;
   }
 
+  /**
+   * 正文渲染。**`.use(gfm)` 不能去掉。**
+   *
+   * 表格、删除线、任务列表、自动链接都是 GFM 扩展，不在 CommonMark 里 ——
+   * 光有 `remark` + `remark-html` 的话，表格会被当成普通段落渲染成一堆竖线
+   * （实测：`|方案|风险|` 那几行原样出现在 <p> 里，没有 <table>）。
+   * 从别处粘过来的笔记默认就带这些东西，所以不是可选项。
+   *
+   * remark-html **不做净化**。这里是可以接受的：能进到 content/ 的只有两种
+   * 来源 —— 仓库里自己提交的文件，和登录后的后台。没有不可信输入。
+   */
   async function renderMarkdown(content: string): Promise<string> {
-    return (await remark().use(html).process(content)).toString();
+    return (await remark().use(gfm).use(html).process(content)).toString();
   }
 
   async function getDetail(

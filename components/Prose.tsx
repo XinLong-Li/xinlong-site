@@ -41,10 +41,17 @@ export default function Prose({
         // 引用与分隔线
         "[&_blockquote]:my-6 [&_blockquote]:border-l-2 [&_blockquote]:border-accent [&_blockquote]:pl-4 [&_blockquote]:text-fg-muted [&_blockquote]:italic",
         "[&_hr]:my-8 [&_hr]:border-border",
-        // 表格（remark-html 目前不产出，但内容迟早会用到）
+        // 表格。**依赖 lib/content.ts 里的 .use(gfm)** —— 表格是 GFM 扩展，
+        // 只挂 remark-html 的话这几条规则一条都不会命中。
         "[&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm",
         "[&_th]:border [&_th]:border-border [&_th]:bg-surface-sunken [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-fg",
         "[&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2",
+        // GFM 同时带来删除线与任务列表，这两样以前渲染不出来，所以一直没有样式。
+        // preflight 会重置表单元素外观，不补的话任务列表是个没有任何尺寸的方块。
+        "[&_del]:line-through [&_del]:opacity-70",
+        "[&_.contains-task-list]:list-none [&_.contains-task-list]:pl-0",
+        "[&_.task-list-item]:list-none [&_.task-list-item]:pl-0",
+        "[&_input]:mr-2 [&_input]:size-3.5 [&_input]:align-middle",
         "[&_strong]:font-semibold [&_strong]:text-fg",
         "[&_img]:my-6 [&_img]:rounded-lg [&_img]:border [&_img]:border-border",
         className,
