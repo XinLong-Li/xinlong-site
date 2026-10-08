@@ -4,8 +4,12 @@ import { randomBytes } from "node:crypto";
 import matter from "gray-matter";
 import { remark } from "remark";
 import gfm from "remark-gfm";
-import html from "remark-html";
-import type { Lang } from "@/lib/i18n";
+import remarkRehype from "remark-rehype";
+import rehypeHighlight from "rehype-highlight";
+import rehypeStringify from "rehype-stringify";
+import rehypeCodeBlocks from "@/lib/rehype-code-blocks";
+import rehypeSafeUrls from "@/lib/rehype-safe-urls";
+import { getDictionary, type Lang } from "@/lib/i18n";
 
 export type ContentMeta = {
   title: string;
@@ -168,15 +172,40 @@ function createCollection(dirName: string) {
    * 正文渲染。**`.use(gfm)` 不能去掉。**
    *
    * 表格、删除线、任务列表、自动链接都是 GFM 扩展，不在 CommonMark 里 ——
-   * 光有 `remark` + `remark-html` 的话，表格会被当成普通段落渲染成一堆竖线
-   * （实测：`|方案|风险|` 那几行原样出现在 <p> 里，没有 <table>）。
-   * 从别处粘过来的笔记默认就带这些东西，所以不是可选项。
+   * 光有 `remark` 的话，表格会被当成普通段落渲染成一堆竖线（实测：`|方案|风险|`
+   * 那几行原样出现在 <p> 里，没有 <table>）。从别处粘过来的笔记默认就带这些东西，
+   * 所以不是可选项。
    *
-   * remark-html **不做净化**。这里是可以接受的：能进到 content/ 的只有两种
-   * 来源 —— 仓库里自己提交的文件，和登录后的后台。没有不可信输入。
+   * 管线是 remark → rehype 两段：mdast 侧做 GFM 与标题归一，转成 hast 后依次做
+   * URL 净化、语法高亮、复制按钮。之所以从 `remark-html` 换过来，唯一原因是它没有
+   * 插入 rehype 插件的口子 —— 高亮必须在服务端完成（页面是构建期预渲染 + 60s ISR
+   * 再生，不能给浏览器发高亮器，也不能有 FOUC）。换管线对已有内容是**逐字节无损**的
+   * （实测 12/12 断言全等，唯一差别是 remark-html 会补的那个结尾换行，见下面 `+ "\n"`）。
+   *
+   * **`rehypeSafeUrls` 不能去掉**：remark-html 默认是净化的，实测它会把
+   * `[x](javascript:alert(1))` 的 href 摘掉；rehype 默认不摘。那个插件就是补回这一层，
+   * 否则换管线等于顺手撤掉一道防线。
+   *
+   * 高亮用 highlight.js 的 common 集（37 种语言）。`rehype-highlight` 无论如何都会
+   * `import {common}`（读过 v7 源码），传 `subset` 只影响自动识别、省不下任何字节，
+   * 所以不折腾子集，能在后台粘什么语言就高亮什么语言。
+   *
+   * `lang` 只用来取复制按钮的文案（复制/已复制/复制失败），按语言烤进 HTML ——
+   * 页面本身就是按语言静态生成的，文案留在服务端即可。
    */
-  async function renderMarkdown(content: string): Promise<string> {
-    return (await remark().use(gfm).use(normalizeHeadings).use(html).process(content)).toString();
+  async function renderMarkdown(content: string, lang: Lang): Promise<string> {
+    const { code } = getDictionary(lang);
+    const file = await remark()
+      .use(gfm)
+      .use(normalizeHeadings)
+      .use(remarkRehype)
+      .use(rehypeSafeUrls)
+      .use(rehypeHighlight)
+      .use(rehypeCodeBlocks, { labels: code })
+      .use(rehypeStringify)
+      .process(content);
+    // remark-html 会在结尾补一个换行，补上它才能保住"已有内容逐字节不变"。
+    return file.toString() + "\n";
   }
 
   async function getDetail(
@@ -194,7 +223,7 @@ function createCollection(dirName: string) {
       summary: data.summary || "",
       tags: data.tags || [],
       lang,
-      contentHtml: await renderMarkdown(content),
+      contentHtml: await renderMarkdown(content, lang),
     };
   }
 

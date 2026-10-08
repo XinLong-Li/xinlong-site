@@ -38,6 +38,8 @@ type Dictionary = {
     emptyPosts: string;
     emptyProjects: string;
   };
+  /** 代码块复制按钮的三种文案，由 lib/rehype-code-blocks.ts 烤进正文 HTML。 */
+  code: { copy: string; copied: string; failed: string };
   home: {
     greeting: string;
     name: string;
@@ -142,6 +144,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       emptyPosts: "还没有文章。",
       emptyProjects: "还没有项目。",
     },
+    code: { copy: "复制", copied: "已复制", failed: "复制失败" },
     home: {
       greeting: "你好，我是",
       name: "李新龙",
@@ -282,6 +285,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       emptyPosts: "No posts yet.",
       emptyProjects: "No projects yet.",
     },
+    code: { copy: "Copy", copied: "Copied", failed: "Copy failed" },
     home: {
       greeting: "Hi, I am",
       name: "Xinlong Li",

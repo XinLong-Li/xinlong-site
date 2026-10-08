@@ -118,6 +118,13 @@ push → runner: npm ci → BUILD_STANDALONE=1 npm run build → package-release
 也就是说日常发文是约 2 分钟，而不是 16 分钟。依赖变化（比如升级 Next）
 才需要付那 16 分钟，而那件事一个月也未必有一次。
 
+不过"加了依赖"和"依赖层变了"**不是一回事**：被服务端打包进去的库会留在
+`.next/server` 里（应用层），不进 standalone 的 `node_modules`，也就不动指纹。
+实测加代码高亮（`remark-rehype` + `rehype-highlight` + `rehype-stringify`，外加
+`highlight.js` 的 37 种语言）时依赖层指纹**一位没变**，只有应用层从 1.5MB 涨到
+1.7MB（+173KB，上传约 +9 秒）—— 那几个包全被 Turbopack 打进了 `.next/server/chunks`。
+所以要不要为"多花 16 分钟"犹豫，先量一下新库落在哪一层，别按包名猜。
+
 指纹在两次独立的 CI 构建之间对上了（`a07ceb30…`），所以这个跳过是可靠的，
 不是在本地凑出来的巧合。
 

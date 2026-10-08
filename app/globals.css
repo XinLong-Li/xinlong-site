@@ -36,6 +36,19 @@
   --color-border: oklch(92.9% 0.013 255.508); /* slate-200 */
   --color-border-strong: oklch(86.9% 0.022 252.894); /* slate-300 */
 
+  /* 代码高亮。和 fg 系列一样：浅色值写在这里，深色在 .dark 里覆盖，几何不变。
+     每一档都按 --color-surface-sunken 为底实算过对比度（浅色 4.90–16.18、
+     深色 6.48–17.92，全部过 AA 4.5:1）。string 一档特意取 emerald-700 而非
+     green-700：后者只有 4.51:1，压线；这一档给到 4.90。 */
+  --color-code-comment: oklch(52% 0.025 257);
+  --color-code-keyword: oklch(49.1% 0.27 292.581); /* violet-700 */
+  --color-code-string: oklch(50.8% 0.118 165.612); /* emerald-700 */
+  --color-code-number: oklch(55.3% 0.195 38.402); /* orange-700 */
+  --color-code-function: oklch(48.8% 0.243 264.376); /* blue-700 */
+  --color-code-type: oklch(51.1% 0.096 186.391); /* teal-700，与主色同族 */
+  --color-code-meta: oklch(52.5% 0.223 3.958); /* pink-700 */
+  --color-code-attr: oklch(52% 0.105 223.128); /* cyan-700 */
+
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -77,6 +90,15 @@
 
   --color-border: oklch(30% 0.02 260);
   --color-border-strong: oklch(40% 0.025 260);
+
+  --color-code-comment: oklch(66% 0.02 255);
+  --color-code-keyword: oklch(81.1% 0.111 293.571); /* violet-300 */
+  --color-code-string: oklch(79.2% 0.209 151.711); /* green-400 */
+  --color-code-number: oklch(83.7% 0.128 66.29); /* orange-300 */
+  --color-code-function: oklch(80.9% 0.105 251.813); /* blue-300 */
+  --color-code-type: oklch(85.5% 0.138 181.071); /* teal-300，同深色主色 */
+  --color-code-meta: oklch(82.3% 0.12 346.018); /* pink-300 */
+  --color-code-attr: oklch(86.5% 0.127 207.078); /* cyan-300 */
 
   --shadow-card: 0 1px 2px -1px oklch(0% 0 0 / 0.4),
     0 4px 12px -2px oklch(0% 0 0 / 0.3);
@@ -172,4 +194,144 @@
       color-mix(in oklab, var(--color-accent) 8%, transparent),
       transparent 70%
     );
+}
+
+/* ==========================================================================
+   代码块：语法着色 + 复制按钮
+
+   这一段是**无 layer 的普通 CSS**，和上面的 .dark 块同一个理由：无 layer 的规则
+   优先于 @layer utilities，这正是压过 components/Prose.tsx 里 [&_pre]:mx-6、
+   [&_pre]:border 那些工具类所需要的（Prose 是按裸标签写的通用排版，这里要知道
+   "每个 pre 外面多了一层 .code-block"）。写成普通 CSS 还有一个附带好处：类名不必
+   被 Tailwind 扫描到 —— 其中一个类（.code-copy）来自 lib/rehype-code-blocks.ts 里
+   拼出来的 HTML 字符串。
+
+   .hljs-* 的类名按 C 代码的**实际输出**取（实测 C 会产生 hljs-meta / hljs-keyword /
+   hljs-string / hljs-comment / hljs-type / hljs-title / hljs-built_in / hljs-number），
+   其余几组是为其它语言留的，没有副作用。color 令牌见 @theme 与 .dark。
+   ========================================================================== */
+
+.hljs {
+  /* 代码默认色：覆盖 Prose 里 [&_pre_code]:text-inherit 继承来的 text-fg-muted */
+  color: var(--color-fg);
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--color-code-comment);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag,
+.hljs-name {
+  color: var(--color-code-keyword);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--color-code-string);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: var(--color-code-number);
+}
+.hljs-title,
+.hljs-section {
+  color: var(--color-code-function);
+}
+.hljs-type,
+.hljs-built_in {
+  color: var(--color-code-type);
+}
+.hljs-meta,
+.hljs-deletion {
+  color: var(--color-code-meta);
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-property,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr {
+  color: var(--color-code-attr);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 600;
+}
+
+/* 代码块外框。纵向节奏从这里出（.code-block），内层 pre 的 margin/border/圆角
+   全部清零，否则会和 Prose 的 [&_pre]:my-6 叠加出一个双倍的空档。 */
+.code-block {
+  margin: 1.5rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden; /* 语言栏与代码共用外框的圆角 */
+  background-color: var(--color-surface-sunken);
+}
+.code-block pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* 语言栏：左语言名、右复制按钮。用一条分隔线划开，不加新颜色 ——
+   它本来就是代码块的一部分 */
+.code-block-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.code-lang {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase; /* 语言名统一大写，代码栏的通行写法 */
+  color: var(--color-fg-subtle);
+  user-select: none;
+}
+
+/* 复制按钮。默认 display:none，只有客户端挂载后（html[data-copy-ready]）才出现 ——
+   禁用 JS 时读者看到的是有高亮的代码，而不是一个点不动的按钮。
+   常显、不用 :hover 控制显隐：触屏没有 hover，那会让按钮在手机上消失。
+   状态的过渡用 CSS transition，于是全局那段 prefers-reduced-motion 规则自动生效。 */
+.code-copy {
+  display: none;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  font-family: inherit;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-fg-subtle);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+html[data-copy-ready] .code-copy {
+  display: inline-flex;
+}
+.code-copy:hover {
+  color: var(--color-fg);
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface);
+}
+.code-copy[data-state="copied"] {
+  color: var(--color-accent);
+  border-color: transparent;
+}
+.code-copy[data-state="failed"] {
+  color: var(--color-code-meta);
 }
