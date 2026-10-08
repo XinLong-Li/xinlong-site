@@ -8,6 +8,7 @@ import remarkRehype from "remark-rehype";
 import rehypeHighlight from "rehype-highlight";
 import rehypeStringify from "rehype-stringify";
 import rehypeCodeBlocks from "@/lib/rehype-code-blocks";
+import rehypeInlineCode from "@/lib/rehype-inline-code";
 import rehypeSafeUrls from "@/lib/rehype-safe-urls";
 import { getDictionary, type Lang } from "@/lib/i18n";
 
@@ -190,6 +191,9 @@ function createCollection(dirName: string) {
    * `import {common}`（读过 v7 源码），传 `subset` 只影响自动识别、省不下任何字节，
    * 所以不折腾子集，能在后台粘什么语言就高亮什么语言。
    *
+   * 行内代码（`` `typeof()` ``）由 `rehypeInlineCode` 单独负责 —— rehype-highlight
+   * 只认 `<pre>` 里的 `<code>`。它按"同篇文档最近的代码块语言"来上色，理由见那个文件。
+   *
    * `lang` 只用来取复制按钮的文案（复制/已复制/复制失败），按语言烤进 HTML ——
    * 页面本身就是按语言静态生成的，文案留在服务端即可。
    */
@@ -201,6 +205,7 @@ function createCollection(dirName: string) {
       .use(remarkRehype)
       .use(rehypeSafeUrls)
       .use(rehypeHighlight)
+      .use(rehypeInlineCode)
       .use(rehypeCodeBlocks, { labels: code })
       .use(rehypeStringify)
       .process(content);
