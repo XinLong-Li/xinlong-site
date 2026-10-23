@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { loginAction } from "./actions";
+import { writeAdminHint } from "@/lib/admin-hint";
 import type { Lang } from "@/lib/i18n";
 
 /**
@@ -31,6 +33,11 @@ export default function LoginForm({
   labels: { password: string; signIn: string; wrongPassword: string; lockedOut: string };
   error?: string;
 }) {
+  // 未登录（会话过期或已退出）—— 让导航栏收起来后台入口。
+  useEffect(() => {
+    writeAdminHint(false);
+  }, []);
+
   const message =
     error === "locked"
       ? labels.lockedOut

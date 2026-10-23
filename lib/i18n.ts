@@ -28,6 +28,8 @@ type Dictionary = {
     projects: string;
     resume: string;
     contact: string;
+    /** 仅对已登录的站主显示（见 lib/admin-hint.ts），访客看不到。 */
+    admin: string;
   };
   theme: { light: string; dark: string; toggle: string };
   langSwitch: string;
@@ -136,6 +138,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       projects: "项目",
       resume: "简历",
       contact: "联系",
+      admin: "后台",
     },
     theme: { light: "浅色", dark: "深色", toggle: "切换主题" },
     langSwitch: "Switch to English",
@@ -279,6 +282,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       projects: "Projects",
       resume: "Resume",
       contact: "Contact",
+      admin: "Admin",
     },
     theme: { light: "Light", dark: "Dark", toggle: "Toggle theme" },
     langSwitch: "切换到中文",

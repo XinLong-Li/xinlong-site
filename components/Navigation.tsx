@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Menu, Moon, Sun, X } from "lucide-react";
+import { Menu, Moon, PenLine, Sun, X } from "lucide-react";
 
 import LangToggle from "./LangToggle";
 import { cn } from "@/lib/cn";
+import { ADMIN_HINT_EVENT, readAdminHint } from "@/lib/admin-hint";
 import { getDictionary, type Lang } from "@/lib/i18n";
 
 const DRAWER_ID = "mobile-nav-drawer";
@@ -22,6 +23,21 @@ export default function Navigation({ lang }: { lang: Lang }) {
   // 导航栏 `return null` —— 那会让固定导航每次导航都从无到有闪一下。
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // 站主入口。读的只是 localStorage 里的一个布尔提示，不是会话本身：
+  // 默认 false，所以服务端和首帧对访客没有任何变化；水合后再按真实状态补上。
+  // 跨标签页靠 storage 事件，同标签页靠后台组件派发的自定义事件。
+  const [isOwner, setIsOwner] = useState(false);
+  useEffect(() => {
+    const sync = () => setIsOwner(readAdminHint());
+    sync();
+    window.addEventListener(ADMIN_HINT_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(ADMIN_HINT_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
 
   const [isOpen, setIsOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -105,9 +121,11 @@ export default function Navigation({ lang }: { lang: Lang }) {
 
   const handleThemeToggle = () => setTheme(isDark ? "light" : "dark");
 
-  // 随笔紧跟博客（都是文字内容，相邻更自然）；/admin 刻意不在此列——
+  // 瞬间紧跟博客（都是文字内容，相邻更自然）；/admin 刻意不在此列——
   // 它的消费者只有站主一个，而导航栏是给访客看的，多一个入口就是把
   // 攻击面主动写在首页上。
+  // 站主登录后会在右侧多一个图标入口（下面的 isOwner）：那是客户端按
+  // 本地提示渲染的，访客的导航结构仍然是这五项，服务端 HTML 里也没有它。
   const navItems = [
     { key: "blog", label: t.nav.blog, href: `/${lang}/blog` },
     { key: "moments", label: t.nav.moments, href: `/${lang}/moments` },
@@ -170,6 +188,24 @@ export default function Navigation({ lang }: { lang: Lang }) {
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 md:ml-2">
+          {/* 只有站主自己的浏览器会看到它 —— 访客的 HTML 里根本没有这个节点。 */}
+          {isOwner && (
+            <Link
+              href={`/${lang}/admin`}
+              aria-label={t.nav.admin}
+              title={t.nav.admin}
+              aria-current={isActive(`/${lang}/admin`) ? "page" : undefined}
+              className={cn(
+                "inline-flex size-9 items-center justify-center rounded-xl",
+                "border border-border bg-surface-raised",
+                "transition-colors hover:border-border-strong hover:bg-surface-sunken",
+                isActive(`/${lang}/admin`) ? "text-accent" : "text-fg",
+              )}
+            >
+              <PenLine size={16} />
+            </Link>
+          )}
+
           <button
             type="button"
             onClick={handleThemeToggle}
@@ -250,6 +286,20 @@ export default function Navigation({ lang }: { lang: Lang }) {
                     {item.label}
                   </Link>
                 ))}
+                {isOwner && (
+                  <Link
+                    href={`/${lang}/admin`}
+                    aria-current={isActive(`/${lang}/admin`) ? "page" : undefined}
+                    className={cn(
+                      "border-b border-border py-3 text-sm font-medium transition-colors last:border-b-0",
+                      isActive(`/${lang}/admin`)
+                        ? "text-accent"
+                        : "text-fg hover:text-accent",
+                    )}
+                  >
+                    {t.nav.admin}
+                  </Link>
+                )}
               </div>
 
               {/* 与导航栏容器同一组 padding，因此和上方 logo 左对齐。

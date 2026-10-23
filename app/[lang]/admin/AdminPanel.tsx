@@ -18,6 +18,7 @@ import {
   splitFrontmatter,
 } from "@/lib/frontmatter";
 import { isSafeSlug, slugify, todayStamp, uniqueSlug } from "@/lib/slug";
+import { writeAdminHint } from "@/lib/admin-hint";
 import type { Lang } from "@/lib/i18n";
 import { getRepoRefAction, logoutAction, readRuntimeDraftAction } from "./actions";
 import Editor, { type EditorValues } from "./Editor";
@@ -167,6 +168,12 @@ export default function AdminPanel({
   }, [lang]);
 
   /* ------------------------------------------------ 本地草稿：恢复与自动保存 */
+
+  // 服务端确认过会话有效才会渲染到这里 —— 记下"这个浏览器登录过"，
+  // 导航栏据此决定要不要显示后台入口。
+  useEffect(() => {
+    writeAdminHint(true);
+  }, []);
 
   /**
    * 恢复放在 effect 里而不是渲染期：这个组件会被 SSR，渲染时读 localStorage 会造成
