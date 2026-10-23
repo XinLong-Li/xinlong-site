@@ -91,6 +91,8 @@ type Dictionary = {
     publishedHint: string;
     viewCommit: string;
     allPosts: string;
+    draftRestored: string;
+    discardDraft: string;
   };
   resume: {
     title: string;
@@ -130,7 +132,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
     siteDescription: "专注于机器人运动控制与嵌入式系统开发",
     nav: {
       blog: "博客",
-      moments: "随笔",
+      moments: "瞬间",
       projects: "项目",
       resume: "简历",
       contact: "联系",
@@ -163,9 +165,9 @@ export const dictionaries: Record<Lang, Dictionary> = {
     },
     blog: { title: "博客", subtitle: "分享技术经验、学习笔记和思考" },
     moments: {
-      title: "随笔",
+      title: "瞬间",
       subtitle: "随手记录的想法与进展",
-      empty: "还没有随笔。",
+      empty: "还没有瞬间。",
     },
     projects: {
       title: "项目",
@@ -182,7 +184,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       subtitle:
         "在本地或在这里改，都是同一批文章。保存会提交到 GitHub 仓库，约 1–2 分钟后自动上线。",
       kindPost: "长文",
-      kindMoment: "随笔",
+      kindMoment: "瞬间",
       fieldTitle: "标题",
       fieldTags: "标签",
       fieldBody: "正文（支持 Markdown）",
@@ -197,7 +199,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
       repoManaged: "仓库收录",
       repoManagedHint: "这些文章由 git 管理，请在仓库里修改。",
       empty: "还没有发布过内容。",
-      tagsHint: "用逗号分隔，例如：随笔, 控制",
+      tagsHint: "用逗号分隔，例如：瞬间, 控制",
       saved: "已保存：",
       errEmpty: "标题和正文都不能为空。",
       errSlug: "地址标识不合法，操作已取消。",
@@ -212,6 +214,8 @@ export const dictionaries: Record<Lang, Dictionary> = {
       publishedHint: "已提交到 GitHub，约 1–2 分钟后自动部署上线。",
       viewCommit: "查看提交",
       allPosts: "全部文章",
+      draftRestored: "已恢复上次未保存的草稿",
+      discardDraft: "丢弃草稿",
     },
     resume: {
       title: "简历",
@@ -356,6 +360,8 @@ export const dictionaries: Record<Lang, Dictionary> = {
       publishedHint: "Committed to GitHub — live in about 1–2 minutes.",
       viewCommit: "View commit",
       allPosts: "All posts",
+      draftRestored: "Unsaved draft restored",
+      discardDraft: "Discard draft",
     },
     resume: {
       title: "Resume",

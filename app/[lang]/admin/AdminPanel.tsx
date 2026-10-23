@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   commitUrl,
@@ -21,6 +21,14 @@ import { isSafeSlug, slugify, todayStamp, uniqueSlug } from "@/lib/slug";
 import type { Lang } from "@/lib/i18n";
 import { getRepoRefAction, logoutAction, readRuntimeDraftAction } from "./actions";
 import Editor, { type EditorValues } from "./Editor";
+import {
+  dropDraft,
+  getDraft,
+  keyFor,
+  latestDraft,
+  saveDraft,
+  type DraftTarget,
+} from "./drafts";
 import PostList from "./PostList";
 
 export type ServerPost = {
@@ -65,7 +73,9 @@ type Labels = Record<
   | "loading"
   | "publishedHint"
   | "viewCommit"
-  | "allPosts",
+  | "allPosts"
+  | "draftRestored"
+  | "discardDraft",
   string
 >;
 
@@ -99,6 +109,23 @@ export default function AdminPanel({
   const [notice, setNotice] = useState<
     { kind: "ok" | "err"; text: string; sha?: string } | null
   >(null);
+
+  /* --------------------------------------------------- 本地草稿的界面状态 */
+
+  const [draftReady, setDraftReady] = useState(false);
+  /** 恢复出来的"新建"草稿；null 表示新建框是空的。 */
+  const [composer, setComposer] = useState<EditorValues | null>(null);
+  /** 发布成功后靠它重建非受控表单，否则已发布的内容还留在框里。 */
+  const [composerRev, setComposerRev] = useState(0);
+  /** 当前这一份内容是不是从草稿恢复的（决定要不要显示提示条）。 */
+  const [restoredKey, setRestoredKey] = useState<string | null>(null);
+  /** 防抖中的待写草稿。目标在输入时就固定，避免切文章后写错 key。 */
+  const pendingRef = useRef<{
+    lang: Lang;
+    target: DraftTarget;
+    values: EditorValues;
+    timer: number;
+  } | null>(null);
 
   /* -------------------------------------------------- 取 token + 拉实时列表 */
 
@@ -138,6 +165,125 @@ export default function AdminPanel({
       cancelled = true;
     };
   }, [lang]);
+
+  /* ------------------------------------------------ 本地草稿：恢复与自动保存 */
+
+  /**
+   * 恢复放在 effect 里而不是渲染期：这个组件会被 SSR，渲染时读 localStorage 会造成
+   * hydration 不一致。
+   *
+   * `draftReady` 之前不渲染编辑器：输入框是非受控的，`defaultValue` 只在挂载时
+   * 生效；恢复"新建"草稿时 `editing` 仍是 null、`<Editor key>` 也不会变，
+   * 不挡住第一次渲染的话恢复出来的内容永远进不去。
+   */
+  useEffect(() => {
+    const found = latestDraft(lang);
+    if (found) {
+      if (found.target.scope === "edit") {
+        setEditing({
+          kind: found.target.kind,
+          slug: found.target.slug,
+          title: found.draft.title,
+          tags: found.draft.tags,
+          body: found.draft.body,
+        });
+      } else {
+        setComposer({
+          kind: found.draft.kind,
+          title: found.draft.title,
+          tags: found.draft.tags,
+          body: found.draft.body,
+        });
+      }
+      setRestoredKey(found.key);
+    }
+    setDraftReady(true);
+  }, [lang]);
+
+  const flushDraft = useCallback(() => {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    window.clearTimeout(pending.timer);
+    pendingRef.current = null;
+    saveDraft(pending.lang, pending.target, pending.values);
+  }, []);
+
+  const cancelPending = useCallback(() => {
+    if (pendingRef.current) window.clearTimeout(pendingRef.current.timer);
+    pendingRef.current = null;
+  }, []);
+
+  /**
+   * 输入 → 500ms 防抖落盘。草稿目标在**输入时**就固定下来：否则 500ms 内切了
+   * 文章，回调会把上一篇的内容写到新文章的 key 上。
+   */
+  const handleDraftChange = useCallback(
+    (values: EditorValues) => {
+      const target: DraftTarget = editing
+        ? { scope: "edit", kind: editing.kind, slug: editing.slug }
+        : { scope: "new" };
+
+      const pending = pendingRef.current;
+      if (pending && keyFor(pending.target) !== keyFor(target)) {
+        flushDraft();
+      }
+      if (pendingRef.current) window.clearTimeout(pendingRef.current.timer);
+
+      const timer = window.setTimeout(() => flushDraft(), 500);
+      pendingRef.current = { lang, target, values, timer };
+    },
+    [editing, lang, flushDraft],
+  );
+
+  /**
+   * 防抖还没到点就离开时（点导航、切标签页、关页面、客户端导航卸载），
+   * 把最后一笔落盘。StrictMode 下挂载后会立刻清理一次，此时 pendingRef
+   * 是 null，flush 是空操作，不会误存。
+   */
+  useEffect(() => {
+    const onPageHide = () => flushDraft();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushDraft();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flushDraft();
+    };
+  }, [flushDraft]);
+
+  const handleDiscard = useCallback(() => {
+    cancelPending();
+    if (editing) {
+      dropDraft(lang, {
+        scope: "edit",
+        kind: editing.kind,
+        slug: editing.slug,
+      });
+      setEditing(null);
+    } else {
+      dropDraft(lang, { scope: "new" });
+      setComposer(null);
+      setComposerRev((rev) => rev + 1);
+    }
+    setRestoredKey(null);
+  }, [cancelPending, editing, lang]);
+
+  /** 取消 = 明确放弃这篇的修改（用户确认过的语义）。 */
+  const handleCancel = useCallback(() => {
+    cancelPending();
+    if (editing) {
+      dropDraft(lang, {
+        scope: "edit",
+        kind: editing.kind,
+        slug: editing.slug,
+      });
+    }
+    setEditing(null);
+    setRestoredKey(null);
+  }, [cancelPending, editing, lang]);
 
   /* ------------------------------------------------------------ 合并列表 */
 
@@ -221,6 +367,12 @@ export default function AdminPanel({
   const handleSubmit = async (values: EditorValues) => {
     if (!repoRef) return;
 
+    // 先把待写的草稿落盘：否则成功删除草稿后，残留的防抖计时器又会写回来。
+    flushDraft();
+    const draftTarget: DraftTarget = editing
+      ? { scope: "edit", kind: editing.kind, slug: editing.slug }
+      : { scope: "new" };
+
     const isMoment = values.kind === "moment";
     const date = editing
       ? (merged.find((m) => m.slug === editing.slug)?.date || todayStamp())
@@ -300,7 +452,19 @@ export default function AdminPanel({
       return { sha: commitSha, ok: `${labels.publishedHint}` };
     });
 
-    if (ok) setEditing(null);
+    if (ok) {
+      cancelPending();
+      dropDraft(lang, draftTarget);
+      setRestoredKey(null);
+      if (editing) {
+        setEditing(null);
+      } else {
+        // 非受控表单不会自己清空：不换 key 的话已发布的内容会留在框里，
+        // 下一次输入又会为它生成一份草稿。
+        setComposer(null);
+        setComposerRev((rev) => rev + 1);
+      }
+    }
   };
 
   const handleDelete = async (post: MergedPost) => {
@@ -313,7 +477,7 @@ export default function AdminPanel({
       });
       return;
     }
-    await run(async () => {
+    const ok = await run(async () => {
       const { commitSha } = await deleteFile(
         repoRef,
         pathFor(post.kind, lang, post.slug),
@@ -322,11 +486,45 @@ export default function AdminPanel({
       );
       return { sha: commitSha, ok: labels.publishedHint };
     });
+
+    if (ok) {
+      cancelPending();
+      // 文章都删了，它的草稿留着只会让下次恢复出一篇已经不存在的文章。
+      dropDraft(lang, { scope: "edit", kind: post.kind, slug: post.slug });
+      if (editing?.kind === post.kind && editing?.slug === post.slug) {
+        setEditing(null);
+        setRestoredKey(null);
+      }
+    }
   };
 
   const handleEdit = async (post: MergedPost) => {
     if (!repoRef) return;
+
+    // 上一个目标还没落盘的输入先存掉，再切换目标。
+    flushDraft();
     setNotice(null);
+
+    const target: DraftTarget = {
+      scope: "edit",
+      kind: post.kind,
+      slug: post.slug,
+    };
+    const draft = getDraft(lang, target);
+    if (draft) {
+      // 这篇有未保存的草稿：优先恢复它，不去拉 GitHub 上的旧正文。
+      setEditing({
+        kind: post.kind,
+        slug: post.slug,
+        title: draft.title,
+        tags: draft.tags,
+        body: draft.body,
+      });
+      setRestoredKey(keyFor(target));
+      return;
+    }
+    setRestoredKey(null);
+
     setBusy(true);
     try {
       const path = pathFor(post.kind, lang, post.slug);
@@ -360,7 +558,10 @@ export default function AdminPanel({
 
   /* -------------------------------------------------------------- 渲染 */
 
-  const disabled = !repoRef || busy;
+  // 编辑已有文章时要等 gitFiles 到齐：保存需要它里面的 sha，否则 GitHub 会以 422
+  // 拒绝"创建"一个已经存在的文件。恢复草稿跳过了 handleEdit 的读取，这个空窗
+  // 比以前更容易被踩到。
+  const disabled = !repoRef || busy || (editing !== null && gitFiles === null);
 
   return (
     <>
@@ -420,14 +621,39 @@ export default function AdminPanel({
         </p>
       )}
 
-      <Editor
-        lang={lang}
-        labels={labels}
-        initial={editing ?? undefined}
-        disabled={disabled}
-        onSubmit={handleSubmit}
-        onCancel={() => setEditing(null)}
-      />
+      {draftReady && (
+        <>
+          {restoredKey && (
+            <div
+              role="status"
+              className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-accent/40 bg-accent-soft/40 px-4 py-3 text-sm text-fg"
+            >
+              <span>{labels.draftRestored}</span>
+              <button
+                type="button"
+                onClick={handleDiscard}
+                className="shrink-0 text-xs font-medium text-accent underline underline-offset-4 transition-colors hover:text-accent-strong"
+              >
+                {labels.discardDraft}
+              </button>
+            </div>
+          )}
+
+          {/* 按目标重建：非受控字段只在挂载时读 defaultValue，换一篇/换一个
+              新建框都必须换 key。发布成功后 composerRev 变化，框会清空。 */}
+          <Editor
+            key={editing ? `edit:${editing.slug}` : `new:${composerRev}`}
+            lang={lang}
+            labels={labels}
+            initial={editing ?? undefined}
+            defaults={editing ? undefined : composer ?? undefined}
+            disabled={disabled}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onDraftChange={handleDraftChange}
+          />
+        </>
+      )}
 
       <section className="mt-12">
         <h2 className="mb-4 text-sm font-semibold tracking-wide text-fg-muted uppercase">

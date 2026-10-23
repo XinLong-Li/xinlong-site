@@ -120,6 +120,8 @@ export default async function AdminPage({
           publishedHint: t.admin.publishedHint,
           viewCommit: t.admin.viewCommit,
           allPosts: t.admin.allPosts,
+          draftRestored: t.admin.draftRestored,
+          discardDraft: t.admin.discardDraft,
         }}
       />
     </Container>
