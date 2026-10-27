@@ -55,12 +55,19 @@ async function ensureOk(res: Response, action: string): Promise<void> {
 /**
  * 不能直接用 btoa —— 它把每个字符当成一个字节，中文会抛
  * InvalidCharacterError。GitHub 的 content 字段是 base64 编码的文件内容，
- * 所以要先按 UTF-8 编成字节再 base64。
+ * 所以文本要先按 UTF-8 编成字节；图片则本身就是字节，原样走。
+ *
+ * 分块拼接是给图片留的：几 MB 的字节数组一次性 `String.fromCharCode(...)`
+ * 会超出参数个数上限，也会在内存里多留一份巨大的中间字符串。
  */
-function toBase64(text: string): string {
-  const bytes = new TextEncoder().encode(text);
+function toBase64(content: string | Uint8Array): string {
+  const bytes =
+    typeof content === "string" ? new TextEncoder().encode(content) : content;
   let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
   return btoa(binary);
 }
 
@@ -133,11 +140,14 @@ export async function readFile(
 /**
  * 写文件。带 sha 是更新，不带是新建（文件已存在却不带 sha → 422）。
  * 返回本次提交的 sha，供界面给出 GitHub 链接。
+ *
+ * `content` 既可以是 markdown 文本，也可以是图片字节 —— 两者最终都是
+ * base64 进 `content` 字段，区别只在编码前那一步。
  */
 export async function writeFile(
   ref: RepoRef,
   path: string,
-  content: string,
+  content: string | Uint8Array,
   message: string,
   sha?: string,
 ): Promise<{ commitSha: string }> {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ClipboardEvent } from "react";
+import { ImagePlus } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import type { Lang } from "@/lib/i18n";
@@ -25,6 +26,9 @@ type Labels = {
   save: string;
   cancel: string;
   tagsHint: string;
+  insertImage: string;
+  uploading: string;
+  uploadFailed: string;
 };
 
 const field =
@@ -51,6 +55,7 @@ export default function Editor({
   onSubmit,
   onCancel,
   onDraftChange,
+  onUploadImage,
 }: {
   lang: Lang;
   labels: Labels;
@@ -61,6 +66,8 @@ export default function Editor({
   onSubmit: (values: EditorValues) => void | Promise<void>;
   onCancel: () => void;
   onDraftChange: (values: EditorValues) => void;
+  /** 上传一张图片，返回它在站内的公开路径（如 /images/2026-10/xxx.webp）。 */
+  onUploadImage?: (file: File) => Promise<string>;
 }) {
   const isEdit = Boolean(initial);
   // 字段是非受控的；AdminPanel 用 <Editor key> 按目标重建整个组件，所以 kind 只在
@@ -91,6 +98,89 @@ export default function Editor({
       title: next === "post" ? current.title : "",
       tags: next === "post" ? current.tags : "",
     });
+  }
+
+  /* ------------------------------------------------------------ 图片上传 */
+
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  /** 把 markdown 插到光标处（有选区就替换），并让草稿立即跟上。 */
+  function insertAtCursor(text: string) {
+    const ta = bodyRef.current;
+    if (!ta) return;
+
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? start;
+    const before = ta.value.slice(0, start);
+    const after = ta.value.slice(end);
+    // 图片单独成段，避免粘在上一行文字后面。
+    const lead = before && !before.endsWith("\n") ? "\n\n" : "";
+    const tail = after && !after.startsWith("\n") ? "\n\n" : "";
+
+    ta.value = `${before}${lead}${text}${tail}${after}`;
+    const caret = before.length + lead.length + text.length;
+    ta.focus();
+    ta.setSelectionRange(caret, caret);
+
+    // 程序化改 value 不会触发 input 事件，手动同步一次草稿。
+    if (formRef.current) onDraftChange(readValues(formRef.current, kind));
+  }
+
+  async function insertImages(files: Iterable<File>) {
+    if (!onUploadImage || disabled) return;
+
+    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) {
+      setUploadError(
+        lang === "zh" ? "只支持图片文件。" : "Only image files are supported.",
+      );
+      return;
+    }
+
+    setUploadError(null);
+    setUploading(true);
+    const lines: string[] = [];
+    try {
+      for (const file of images) {
+        const url = await onUploadImage(file);
+        const alt =
+          file.name.replace(/\.[^.]+$/, "").replace(/[[\]\n]/g, " ").trim() ||
+          "image";
+        lines.push(`![${alt}](${url})`);
+      }
+      insertAtCursor(lines.join("\n\n"));
+    } catch (e) {
+      // 批量上传中途失败：已经成功的那些仍然插进正文，别让它们变成
+      // 仓库里没人引用的孤儿文件。
+      if (lines.length) insertAtCursor(lines.join("\n\n"));
+      const detail = e instanceof Error ? e.message : String(e);
+      setUploadError(
+        detail === "too-large"
+          ? lang === "zh"
+            ? "图片超过 10MB，请先压缩。"
+            : "Image is larger than 10 MB; compress it first."
+          : detail === "unsupported"
+            ? lang === "zh"
+              ? "只支持图片文件。"
+              : "Only image files are supported."
+            : `${labels.uploadFailed}: ${detail}`,
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  /** 截图直接粘贴时，文件可能在 items 里而不是 files 里。 */
+  function filesFromPaste(e: ClipboardEvent<HTMLTextAreaElement>): File[] {
+    const direct = Array.from(e.clipboardData.files);
+    if (direct.length) return direct;
+    return Array.from(e.clipboardData.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((f): f is File => Boolean(f));
   }
 
   return (
@@ -154,18 +244,75 @@ export default function Editor({
         </>
       )}
 
-      <label className={cn(labelCls, "mt-4")} htmlFor="f-body">
-        {kind === "post" ? labels.fieldBody : labels.fieldBodyMoment}
-      </label>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <label className={labelCls} htmlFor="f-body">
+          {kind === "post" ? labels.fieldBody : labels.fieldBodyMoment}
+        </label>
+        {onUploadImage && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={disabled || uploading}
+            title={
+              lang === "zh"
+                ? "也可以直接粘贴或拖入图片"
+                : "You can also paste or drop images"
+            }
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg disabled:opacity-60"
+          >
+            <ImagePlus size={14} />
+            {uploading ? labels.uploading : labels.insertImage}
+          </button>
+        )}
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          // 先快照再清空：部分浏览器在 value 清空后 FileList 也会变空。
+          const files = e.currentTarget.files
+            ? Array.from(e.currentTarget.files)
+            : [];
+          if (files.length) void insertImages(files);
+          e.currentTarget.value = ""; // 同一个文件可以再选一次
+        }}
+      />
       <textarea
+        ref={bodyRef}
         id="f-body"
         name="body"
         required
         readOnly={disabled}
         rows={kind === "post" ? 14 : 5}
         defaultValue={seed?.body ?? ""}
+        onPaste={(e) => {
+          if (!onUploadImage) return;
+          const files = filesFromPaste(e);
+          if (files.length) {
+            e.preventDefault();
+            void insertImages(files);
+          }
+        }}
+        onDragOver={(e) => {
+          if (onUploadImage) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          if (!onUploadImage) return;
+          if (e.dataTransfer.files.length) {
+            e.preventDefault();
+            void insertImages(e.dataTransfer.files);
+          }
+        }}
         className={cn(field, "resize-y font-mono text-sm leading-relaxed")}
       />
+      {uploadError && (
+        <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">
+          {uploadError}
+        </p>
+      )}
 
       <div className="mt-5 flex items-center gap-3">
         <button

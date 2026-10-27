@@ -95,6 +95,9 @@ type Dictionary = {
     allPosts: string;
     draftRestored: string;
     discardDraft: string;
+    insertImage: string;
+    uploading: string;
+    uploadFailed: string;
   };
   resume: {
     title: string;
@@ -219,6 +222,9 @@ export const dictionaries: Record<Lang, Dictionary> = {
       allPosts: "全部文章",
       draftRestored: "已恢复上次未保存的草稿",
       discardDraft: "丢弃草稿",
+      insertImage: "插入图片",
+      uploading: "上传中…",
+      uploadFailed: "图片上传失败",
     },
     resume: {
       title: "简历",
@@ -366,6 +372,9 @@ export const dictionaries: Record<Lang, Dictionary> = {
       allPosts: "All posts",
       draftRestored: "Unsaved draft restored",
       discardDraft: "Discard draft",
+      insertImage: "Insert image",
+      uploading: "Uploading…",
+      uploadFailed: "Image upload failed",
     },
     resume: {
       title: "Resume",

@@ -122,6 +122,9 @@ export default async function AdminPage({
           allPosts: t.admin.allPosts,
           draftRestored: t.admin.draftRestored,
           discardDraft: t.admin.discardDraft,
+          insertImage: t.admin.insertImage,
+          uploading: t.admin.uploading,
+          uploadFailed: t.admin.uploadFailed,
         }}
       />
     </Container>

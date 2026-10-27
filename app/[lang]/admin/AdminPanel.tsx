@@ -19,6 +19,7 @@ import {
 } from "@/lib/frontmatter";
 import { isSafeSlug, slugify, todayStamp, uniqueSlug } from "@/lib/slug";
 import { writeAdminHint } from "@/lib/admin-hint";
+import { prepareImage } from "@/lib/image-upload";
 import type { Lang } from "@/lib/i18n";
 import { getRepoRefAction, logoutAction, readRuntimeDraftAction } from "./actions";
 import Editor, { type EditorValues } from "./Editor";
@@ -76,7 +77,10 @@ type Labels = Record<
   | "viewCommit"
   | "allPosts"
   | "draftRestored"
-  | "discardDraft",
+  | "discardDraft"
+  | "insertImage"
+  | "uploading"
+  | "uploadFailed",
   string
 >;
 
@@ -505,6 +509,36 @@ export default function AdminPanel({
     }
   };
 
+  /* -------------------------------------------------------------- 图片上传 */
+
+  /**
+   * 压缩 → 提交到 public/images/<年-月>/ → 返回站内路径。
+   *
+   * 走的是和正文完全相同的 Contents API，所以图片和文字一样版本化、可回滚。
+   * 每次上传是一次独立提交，会触发一次部署 —— 和保存正文同一个节奏。
+   */
+  const handleUploadImage = useCallback(
+    async (file: File): Promise<string> => {
+      if (!repoRef) throw new Error("not ready");
+
+      const { bytes, ext } = await prepareImage(file);
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      // 随机名而不是原文件名：避开中文、空格与重名，URL 也稳定可缓存。
+      const name = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      await writeFile(
+        repoRef,
+        `public/images/${month}/${name}`,
+        bytes,
+        `content: 上传图片 ${name}`,
+      );
+
+      return `/images/${month}/${name}`;
+    },
+    [repoRef],
+  );
+
   const handleEdit = async (post: MergedPost) => {
     if (!repoRef) return;
 
@@ -658,6 +692,7 @@ export default function AdminPanel({
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             onDraftChange={handleDraftChange}
+            onUploadImage={handleUploadImage}
           />
         </>
       )}
