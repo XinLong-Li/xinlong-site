@@ -365,3 +365,34 @@ html[data-halloween] .site-logo::after {
   font-size: 0.9em;
   vertical-align: -0.04em;
 }
+
+/* ==========================================================================
+   正文图片：点击放大 + 瞬间里的缩略图
+
+   图片由 lib/rehype-image-links.ts 包成 <a class="prose-image" data-zoom>。
+   Prose 里 [&_a] 的链接样式会落到这个包裹层上，所以先把下划线/主色清掉；
+   灯箱本身在 components/ImageZoom.tsx。
+   ========================================================================== */
+
+.prose-image {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  /* 不用 line-height:0 消基线空隙：图片加载失败时，alt 文本会跟着变成 0 高，
+     等于把唯一的替代信息也弄没了。多出来的一两像素不值得。 */
+  text-decoration: none; /* 压过 Prose 的 [&_a]:underline */
+  color: inherit;
+  cursor: zoom-in;
+}
+
+.prose-image img {
+  display: block;
+}
+
+/* 瞬间列表：只显示缩略图，点开才看大图。
+   190px 是"一眼能看清是什么、又不至于占满整张卡片"的高度。 */
+.moments-prose .prose-image img {
+  width: auto;
+  max-height: 190px;
+  margin: 0.75rem 0;
+}

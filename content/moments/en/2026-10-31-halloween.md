@@ -8,4 +8,4 @@ lang: "en"
 
 No pumpkin carving this year — so I lit one on the blog instead. 🎃
 
-![A jack-o'-lantern among autumn leaves](/images/2026-10/jack-o-lantern.webp)
+![A small pumpkin with two leaves](/images/2026-10/pumpkin-illustration.svg)

@@ -45,7 +45,7 @@ export default async function MomentsPage({
             // 需要在编辑时 revalidate 的路径，收益接近零。
             <Card key={m.slug}>
               <time className="font-mono text-xs text-fg-subtle">{m.date}</time>
-              <Prose html={m.contentHtml} className="mt-2 text-sm" />
+              <Prose html={m.contentHtml} className="moments-prose mt-2 text-sm" />
             </Card>
           ))}
         </div>

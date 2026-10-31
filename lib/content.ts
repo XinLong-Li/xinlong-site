@@ -8,6 +8,7 @@ import remarkRehype from "remark-rehype";
 import rehypeHighlight from "rehype-highlight";
 import rehypeStringify from "rehype-stringify";
 import rehypeCodeBlocks from "@/lib/rehype-code-blocks";
+import rehypeImageLinks from "@/lib/rehype-image-links";
 import rehypeInlineCode from "@/lib/rehype-inline-code";
 import rehypeSafeUrls from "@/lib/rehype-safe-urls";
 import { getDictionary, type Lang } from "@/lib/i18n";
@@ -204,6 +205,7 @@ function createCollection(dirName: string) {
       .use(normalizeHeadings)
       .use(remarkRehype)
       .use(rehypeSafeUrls)
+      .use(rehypeImageLinks)
       .use(rehypeHighlight)
       .use(rehypeInlineCode)
       .use(rehypeCodeBlocks, { labels: code })

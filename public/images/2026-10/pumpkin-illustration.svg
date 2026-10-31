@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="55%" r="50%">
+      <stop offset="0" stop-color="#ffc27a" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#ffc27a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7b47a"/>
+      <stop offset="1" stop-color="#ef9a52"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a8d8c2"/>
+      <stop offset="1" stop-color="#7cb89f"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="320" cy="320" rx="235" ry="145" fill="url(#glow)"/>
+  <!-- 梗 -->
+  <path d="M312 232c-2-38 10-60 30-68-6 20-4 44 4 66z" fill="#6f9e86"/>
+  <!-- 叶子 -->
+  <path d="M330 226c-38-34-92-36-122-14 16 34 62 48 116 32z" fill="url(#leaf)"/>
+  <path d="M340 224c34-30 80-30 106-10-16 30-58 44-102 30z" fill="#93cbb4"/>
+  <!-- 瓜身：三瓣 -->
+  <ellipse cx="320" cy="330" rx="175" ry="105" fill="url(#body)"/>
+  <ellipse cx="215" cy="332" rx="80" ry="96" fill="#f2a25c"/>
+  <ellipse cx="425" cy="332" rx="80" ry="96" fill="#f2a25c"/>
+  <ellipse cx="320" cy="332" rx="62" ry="102" fill="#f8b678"/>
+  <!-- 高光 -->
+  <ellipse cx="300" cy="290" rx="34" ry="46" fill="#ffd3a3" opacity=".35"/>
+  <!-- 棱 -->
+  <path d="M320 234v196M254 244c-14 50-14 116 0 164M386 244c14 50 14 116 0 164"
+        stroke="#dd8a45" stroke-width="3" fill="none" stroke-linecap="round" opacity=".5"/>
+  <!-- 星点 -->
+  <g fill="#ffd7a3">
+    <circle cx="486" cy="196" r="4"/><circle cx="516" cy="236" r="2.5"/>
+    <circle cx="470" cy="258" r="2"/><circle cx="166" cy="206" r="3"/>
+  </g>
+</svg>
