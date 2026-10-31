@@ -298,3 +298,5 @@ function createCollection(dirName: string) {
 export const posts = createCollection("posts");
 export const projects = createCollection("projects");
 export const moments = createCollection("moments");
+/** 点子专栏：拆解"把旧东西重新做一遍"的产品。和项目一样由仓库策展。 */
+export const ideas = createCollection("ideas");

@@ -52,7 +52,7 @@ rm -f "$APP_ARCHIVE"
 
 # --- 2. 校验应用层 -----------------------------------------------------------
 echo "[2/9] 校验产物"
-for f in server.js package.json .next/BUILD_ID .next/static .next/server ecosystem.config.js content/posts; do
+for f in server.js package.json .next/BUILD_ID .next/static .next/server ecosystem.config.js content/posts content/ideas; do
   if [ ! -e "$STAGE/$f" ]; then
     echo "ERROR: 产物缺少 ${f} —— 放弃部署，服务器未被改动" >&2
     exit 1
@@ -108,9 +108,9 @@ else
 fi
 
 # --- 4. 换内容 ---------------------------------------------------------------
-# 只替换仓库跟踪的三棵树。content/runtime 不在其中，所以原封不动。
+# 只替换仓库跟踪的四棵树。content/runtime 不在其中，所以原封不动。
 echo "[4/9] 替换 content/"
-rm -rf content/posts content/moments content/projects
+rm -rf content/posts content/moments content/projects content/ideas
 mkdir -p content
 cp -a "$STAGE/content/." content/
 

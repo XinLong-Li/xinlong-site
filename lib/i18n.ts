@@ -25,6 +25,7 @@ type Dictionary = {
   nav: {
     blog: string;
     moments: string;
+    ideas: string;
     projects: string;
     resume: string;
     contact: string;
@@ -36,9 +37,11 @@ type Dictionary = {
   common: {
     backToProjects: string;
     backToBlog: string;
+    backToIdeas: string;
     viewAll: string;
     emptyPosts: string;
     emptyProjects: string;
+    emptyIdeas: string;
   };
   /** 代码块复制按钮的三种文案，由 lib/rehype-code-blocks.ts 烤进正文 HTML。 */
   code: { copy: string; copied: string; failed: string };
@@ -49,10 +52,12 @@ type Dictionary = {
     bio: string;
     skills: string[];
     featuredBlog: string;
+    featuredIdeas: string;
     featuredProjects: string;
   };
   blog: { title: string; subtitle: string };
   moments: { title: string; subtitle: string; empty: string };
+  ideas: { title: string; subtitle: string };
   projects: { title: string; subtitle: string };
   admin: {
     login: string;
@@ -138,6 +143,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
     nav: {
       blog: "博客",
       moments: "瞬间",
+      ideas: "点子",
       projects: "项目",
       resume: "简历",
       contact: "联系",
@@ -148,9 +154,11 @@ export const dictionaries: Record<Lang, Dictionary> = {
     common: {
       backToProjects: "← 返回项目",
       backToBlog: "← 返回博客",
+      backToIdeas: "← 返回点子",
       viewAll: "查看全部",
       emptyPosts: "还没有文章。",
       emptyProjects: "还没有项目。",
+      emptyIdeas: "还没有点子。",
     },
     code: { copy: "复制", copied: "已复制", failed: "复制失败" },
     home: {
@@ -167,6 +175,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
         "PID/MPC 控制",
       ],
       featuredBlog: "精选博客",
+      featuredIdeas: "精选点子",
       featuredProjects: "精选项目",
     },
     blog: { title: "博客", subtitle: "分享技术经验、学习笔记和思考" },
@@ -174,6 +183,10 @@ export const dictionaries: Record<Lang, Dictionary> = {
       title: "瞬间",
       subtitle: "随手记录的想法与进展",
       empty: "还没有瞬间。",
+    },
+    ideas: {
+      title: "点子",
+      subtitle: "收集那些把旧东西重新做一遍的产品，拆解它们为什么成立",
     },
     projects: {
       title: "项目",
@@ -285,6 +298,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
     nav: {
       blog: "Blog",
       moments: "Moments",
+      ideas: "Ideas",
       projects: "Projects",
       resume: "Resume",
       contact: "Contact",
@@ -295,9 +309,11 @@ export const dictionaries: Record<Lang, Dictionary> = {
     common: {
       backToProjects: "← Back to Projects",
       backToBlog: "← Back to Blog",
+      backToIdeas: "← Back to Ideas",
       viewAll: "View All",
       emptyPosts: "No posts yet.",
       emptyProjects: "No projects yet.",
+      emptyIdeas: "No ideas yet.",
     },
     code: { copy: "Copy", copied: "Copied", failed: "Copy failed" },
     home: {
@@ -314,6 +330,7 @@ export const dictionaries: Record<Lang, Dictionary> = {
         "PID/MPC Control",
       ],
       featuredBlog: "Featured Blog",
+      featuredIdeas: "Featured Ideas",
       featuredProjects: "Featured Projects",
     },
     blog: {
@@ -324,6 +341,11 @@ export const dictionaries: Record<Lang, Dictionary> = {
       title: "Moments",
       subtitle: "Short notes and progress, posted as they happen",
       empty: "No moments yet.",
+    },
+    ideas: {
+      title: "Ideas",
+      subtitle:
+        "Products that take something familiar and make it new — and why they work",
     },
     projects: {
       title: "Projects",

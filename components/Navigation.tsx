@@ -129,6 +129,7 @@ export default function Navigation({ lang }: { lang: Lang }) {
   const navItems = [
     { key: "blog", label: t.nav.blog, href: `/${lang}/blog` },
     { key: "moments", label: t.nav.moments, href: `/${lang}/moments` },
+    { key: "ideas", label: t.nav.ideas, href: `/${lang}/ideas` },
     { key: "projects", label: t.nav.projects, href: `/${lang}/projects` },
     { key: "resume", label: t.nav.resume, href: `/${lang}/resume` },
     { key: "contact", label: t.nav.contact, href: `/${lang}/contact` },
@@ -174,7 +175,8 @@ export default function Navigation({ lang }: { lang: Lang }) {
           {t.siteName}
         </Link>
 
-        <div className="ml-auto hidden items-center gap-1 md:flex">
+        {/* lg 而不是 md：六个入口在 768px 会挤成一团，到 1024px 才放开。 */}
+        <div className="ml-auto hidden items-center gap-1 lg:flex">
           {navItems.map((item) => (
             <Link
               key={item.key}
@@ -187,7 +189,7 @@ export default function Navigation({ lang }: { lang: Lang }) {
           ))}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2 md:ml-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-2">
           {/* 只有站主自己的浏览器会看到它 —— 访客的 HTML 里根本没有这个节点。 */}
           {isOwner && (
             <Link
@@ -223,7 +225,7 @@ export default function Navigation({ lang }: { lang: Lang }) {
               它基类里已有 inline-flex，而 Tailwind 生成的 CSS 中 .hidden
               排在 .inline-flex 之前，同等特异性下后者胜出，类名压制无效。
               包裹元素可以完全绕开这个顺序依赖。 */}
-          <span className="hidden md:inline-flex">
+          <span className="hidden lg:inline-flex">
             <LangToggle lang={lang} label={t.langSwitch} />
           </span>
 
@@ -235,7 +237,7 @@ export default function Navigation({ lang }: { lang: Lang }) {
             aria-expanded={isOpen}
             aria-controls={DRAWER_ID}
             className={cn(
-              "inline-flex size-9 items-center justify-center rounded-xl md:hidden",
+              "inline-flex size-9 items-center justify-center rounded-xl lg:hidden",
               "border border-border bg-surface-raised text-fg",
               "transition-colors hover:border-border-strong hover:bg-surface-sunken",
             )}
@@ -248,13 +250,13 @@ export default function Navigation({ lang }: { lang: Lang }) {
       {/* 抽屉只在打开时渲染——旧实现始终 display:block、仅靠 visibility 隐藏，
           导致桌面端其链接仍留在 Tab 序里，是真实的键盘陷阱。
           条件渲染从结构上杜绝了这一点，也省去了 exit 动画。
-          md:hidden 兜底：若在移动端打开后把窗口拉宽，抽屉不会残留。 */}
+          lg:hidden 兜底：若在移动端打开后把窗口拉宽，抽屉不会残留。 */}
       {isOpen && (
         <>
           <div
             aria-hidden="true"
             onClick={() => close()}
-            className="fixed inset-x-0 bottom-0 top-16 z-[90] bg-black/40 md:hidden"
+            className="fixed inset-x-0 bottom-0 top-16 z-[90] bg-black/40 lg:hidden"
           />
           <div
             id={DRAWER_ID}
@@ -263,7 +265,7 @@ export default function Navigation({ lang }: { lang: Lang }) {
             aria-modal="true"
             aria-label={t.siteName}
             className={cn(
-              "absolute inset-x-0 top-full z-[120] md:hidden",
+              "absolute inset-x-0 top-full z-[120] lg:hidden",
               "max-h-[calc(100dvh-4rem)] overflow-y-auto",
               "border-b border-border bg-surface/95 backdrop-blur-xl",
               "animate-[drawer-in_0.2s_ease-out]",

@@ -6,7 +6,7 @@ import Container from "@/components/Container";
 import Card from "@/components/Card";
 import Tag from "@/components/Tag";
 import SectionHeader from "@/components/SectionHeader";
-import { posts, projects } from "@/lib/content";
+import { ideas, posts, projects } from "@/lib/content";
 import { CONTACT_LINKS, getDictionary, isLang } from "@/lib/i18n";
 
 export async function generateMetadata({
@@ -30,6 +30,7 @@ export default async function HomePage({
 
   const t = getDictionary(lang);
   const featuredPosts = posts.getItems(lang).slice(0, 3);
+  const featuredIdeas = ideas.getItems(lang).slice(0, 2);
   const featuredProjects = projects.getItems(lang).slice(0, 2);
 
   return (
@@ -117,6 +118,37 @@ export default async function HomePage({
                   {post.summary && (
                     <p className="mt-2 leading-relaxed text-fg-muted">
                       {post.summary}
+                    </p>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      </Container>
+
+      <Container className="pb-4">
+        <section className="pt-12">
+          <SectionHeader
+            title={t.home.featuredIdeas}
+            actionHref={`/${lang}/ideas`}
+            actionLabel={t.common.viewAll}
+          />
+          {featuredIdeas.length === 0 ? (
+            <p className="text-sm text-fg-subtle">{t.common.emptyIdeas}</p>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2">
+              {featuredIdeas.map((idea) => (
+                <Card key={idea.slug} href={`/${lang}/ideas/${idea.slug}`}>
+                  <h3 className="text-lg font-semibold text-fg">
+                    {idea.title}
+                  </h3>
+                  <p className="mt-1 font-mono text-sm text-fg-subtle">
+                    {idea.date}
+                  </p>
+                  {idea.summary && (
+                    <p className="mt-2 leading-relaxed text-fg-muted">
+                      {idea.summary}
                     </p>
                   )}
                 </Card>

@@ -46,7 +46,7 @@ app/
   [lang]/              根布局与全部页面（lang ∈ zh | en）
     layout.tsx         根布局：<html lang>、主题 Provider、导航、页脚
     page.tsx           首页
-    blog/ moments/ projects/   三类内容
+    blog/ moments/ ideas/ projects/   四类内容
     admin/             网页端发帖后台（登录 + 编辑器；写入直接提交 GitHub）
     [...rest]/         兜底路由，触发 404
     fonts/             自托管字体
@@ -59,12 +59,12 @@ scripts/
   deploy-release.sh    在服务器上铺开产物、重启、健康检查（经 stdin 送达）
 lib/
   i18n.ts              类型化字典（两种语言键不一致会在编译期报错）
-  content.ts           posts / projects / moments 的统一读写
+  content.ts           posts / projects / moments / ideas 的统一读写
   auth.ts              密码校验、无状态会话、登录限速
   slug.ts              slug 生成（中文标题回退到内容哈希）
 
 content/
-  posts/ projects/     仓库策展内容，git 跟踪，**只读**
+  posts/ moments/ projects/ ideas/   仓库策展内容，git 跟踪，**只读**
   runtime/             【遗留】旧的运行时发布机制留下的草稿，只读；
                        编辑一次即提交进 git，下次部署后由脚本清理
 ```
@@ -260,9 +260,9 @@ revalidatePath(`/${lang}/blog/${slug}`);   // 删除时也必须，否则留下�
 **它只活在服务器上，这一点由两道独立机制保证**，所以比原来更稳：
 
 - `scripts/package-release.sh` 重建 `content/` 时只从 `posts` / `moments` /
-  `projects` 三棵树里取，产物里永远不会有 `runtime`；`deploy-release.sh`
+  `projects` / `ideas` 四棵树里取，产物里永远不会有 `runtime`；`deploy-release.sh`
   还会在解压后正面断言一次，发现就拒绝部署
-- `deploy-release.sh` 替换 content 时只删上面那三个目录，`content/runtime`
+- `deploy-release.sh` 替换 content 时只删上面那四个目录，`content/runtime`
   不在其中，所以原封不动
 
 仍然要 gitignore 的原因变了：不再是"扛过 `git reset --hard`"（那条命令已经

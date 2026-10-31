@@ -74,13 +74,13 @@ cp -a .next/static "$STAGE/.next/static"
 cp -a public "$STAGE/public"
 
 # --- 3. 内容 -----------------------------------------------------------------
-# **重建整个 content/，只从仓库跟踪的三棵树里取。**
+# **重建整个 content/，只从仓库跟踪的四棵树里取。**
 # 这样天然排除 content/runtime —— 那份遗留草稿属于服务器，不属于产物。
 # 本地开发时的 content/runtime 和服务器上的不是同一批文件，混进产物等于往
 # 线上塞进本不该存在的文章。
 rm -rf "$STAGE/content"
 mkdir -p "$STAGE/content"
-for d in posts moments projects; do
+for d in posts moments projects ideas; do
   if [ -d "content/$d" ]; then
     cp -a "content/$d" "$STAGE/content/$d"
   fi

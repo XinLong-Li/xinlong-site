@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { posts, projects } from "@/lib/content";
+import { ideas, posts, projects } from "@/lib/content";
 import { LANGS } from "@/lib/i18n";
 
 const SITE_URL = "https://xinlong-li.site";
@@ -15,6 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       "",
       "/blog",
       "/moments",
+      "/ideas",
       "/projects",
       "/resume",
       "/contact",
@@ -42,6 +43,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     }));
 
-    return [...staticPages, ...postPages, ...projectPages];
+    const ideaPages = ideas.getItems(lang).map((idea) => ({
+      url: `${SITE_URL}/${lang}/ideas/${idea.slug}`,
+      lastModified: new Date(idea.date),
+      changeFrequency: "yearly" as const,
+      priority: 0.7,
+    }));
+
+    return [...staticPages, ...postPages, ...projectPages, ...ideaPages];
   });
 }
