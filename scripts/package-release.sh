@@ -66,12 +66,16 @@ echo "[-] 组装应用层"
 mkdir -p "$STAGE"
 ( cd "$SRC" && tar cf - --exclude=./node_modules . ) | ( cd "$STAGE" && tar xf - )
 
-# --- 2. standalone 不含、但运行时要用的两样 -------------------------------
-# .next/static 是客户端 JS/CSS；public 是图标与静态资源。Next 不会自动带上它们，
-# 漏了的表现是页面能打开但完全没有样式。
-mkdir -p "$STAGE/.next"
-cp -a .next/static "$STAGE/.next/static"
-cp -a public "$STAGE/public"
+# --- 2. standalone 之外的运行时资源 ---------------------------------------
+# .next/static 是客户端 JS/CSS；public 是图标与图片。
+#
+# **用 "目录/." 合并，而不是复制目录本身。** 这个项目的 lib/content.ts 会动态
+# 读盘，Next 因此把整个项目 trace 进了 standalone —— 实测 public/ 已经在
+# .next/standalone 里。再 `cp -a public "$STAGE/public"` 就会套出
+# public/public/，让所有静态资源在产物里翻倍（图片一多就是几百 KB 的无谓上传）。
+mkdir -p "$STAGE/.next/static" "$STAGE/public"
+cp -a .next/static/. "$STAGE/.next/static/"
+cp -a public/. "$STAGE/public/"
 
 # --- 3. 内容 -----------------------------------------------------------------
 # **重建整个 content/，只从仓库跟踪的四棵树里取。**
