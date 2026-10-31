@@ -169,7 +169,7 @@ export default function Navigation({ lang }: { lang: Lang }) {
         {/* 旧实现是 <div onClick>，不可聚焦、非链接语义。用真正的 Link。 */}
         <Link
           href={`/${lang}`}
-          className="shrink-0 text-lg font-bold text-fg transition-colors hover:text-accent"
+          className="site-logo shrink-0 text-lg font-bold text-fg transition-colors hover:text-accent"
         >
           {t.siteName}
         </Link>

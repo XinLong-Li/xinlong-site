@@ -8,6 +8,7 @@ import Providers from "../providers";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import CodeCopy from "@/components/CodeCopy";
+import Halloween from "@/components/Halloween";
 import { getDictionary, htmlLang, isLang, LANGS } from "@/lib/i18n";
 
 const SITE_URL = "https://xinlong-li.site";
@@ -110,6 +111,8 @@ export default async function LangLayout({
           {/* 复制按钮的行为层，不渲染任何东西。挂在这里而不是每个页面：
               一个委托监听覆盖全站，且它不接 props，无需 lang。 */}
           <CodeCopy />
+          {/* 万圣节彩蛋：只在 10/31（或 ?halloween=1）生效，不渲染任何东西。 */}
+          <Halloween />
           {/* 各页面自行包 <Container>，横向尺度由它单点定义 */}
           {/* flex-1 让 main 吃掉 body 纵向弹性容器里的剩余空间，页脚因此
               永远贴在视口底部，不被内容长度左右。 */}

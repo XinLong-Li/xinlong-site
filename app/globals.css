@@ -335,3 +335,33 @@ html[data-copy-ready] .code-copy {
 .code-copy[data-state="failed"] {
   color: var(--color-code-meta);
 }
+
+/* ==========================================================================
+   万圣节彩蛋（10 月 31 日，或 ?halloween=1）
+
+   只改背景和站名后缀，不碰任何前景色/文本令牌 —— 对比度、排版、布局都不变。
+   标记由 components/Halloween.tsx 在挂载后加到 <html> 上，所以服务端 HTML
+   与平时完全一致；第二天重新打开页面就自动恢复，不留下长期装饰。
+   ========================================================================== */
+
+html[data-halloween] .bg-glow {
+  /* 和 .bg-glow 同一组几何，只把色相从 teal 换成南瓜橙。 */
+  background:
+    radial-gradient(
+      60rem 40rem at 15% -10%,
+      color-mix(in oklab, oklch(72% 0.19 55) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      50rem 35rem at 90% 10%,
+      color-mix(in oklab, oklch(72% 0.19 55) 10%, transparent),
+      transparent 70%
+    );
+}
+
+html[data-halloween] .site-logo::after {
+  content: "🎃";
+  margin-left: 0.3rem;
+  font-size: 0.9em;
+  vertical-align: -0.04em;
+}
