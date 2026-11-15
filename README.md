@@ -46,7 +46,7 @@ app/
   [lang]/              根布局与全部页面（lang ∈ zh | en）
     layout.tsx         根布局：<html lang>、主题 Provider、导航、页脚
     page.tsx           首页
-    blog/ moments/ ideas/ projects/   四类内容
+    blog/ moments/ ideas/ projects/   内容路由（/blog 是统一流）
     admin/             网页端发帖后台（登录 + 编辑器；写入直接提交 GitHub）
     [...rest]/         兜底路由，触发 404
     fonts/             自托管字体
@@ -68,6 +68,9 @@ content/
   runtime/             【遗留】旧的运行时发布机制留下的草稿，只读；
                        编辑一次即提交进 git，下次部署后由脚本清理
 ```
+
+`/blog` 是统一入口：文章、瞬间、点子按日期混排，顶部可以按类型筛选；
+`/moments` 和 `/ideas` 仍然保留，作为可直接访问的归档页（不在导航里）。
 
 两类内容的读取规则：**slug 冲突时 git 版本优先**。管理界面把仓库内容
 标为"仓库收录"并转为只读——删掉它下次 `git reset --hard` 会复活，编辑它

@@ -396,3 +396,17 @@ html[data-halloween] .site-logo::after {
   max-height: 190px;
   margin: 0.75rem 0;
 }
+
+/* ==========================================================================
+   统一博客流（/blog）的类型筛选
+
+   筛选条在 components/WritingFilter.tsx，只切换 data-filter；内容本身是
+   服务端渲染好的 children，这里只负责按类型隐藏。这样 /blog 保持静态，
+   正文也不会被序列化进客户端。
+   ========================================================================== */
+
+.writing-feed[data-filter="post"] [data-kind]:not([data-kind="post"]),
+.writing-feed[data-filter="moment"] [data-kind]:not([data-kind="moment"]),
+.writing-feed[data-filter="idea"] [data-kind]:not([data-kind="idea"]) {
+  display: none;
+}

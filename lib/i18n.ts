@@ -55,6 +55,8 @@ type Dictionary = {
     featuredIdeas: string;
     featuredProjects: string;
   };
+  /** 统一博客流里的类型徽章与筛选条。 */
+  kinds: { all: string; post: string; moment: string; idea: string };
   blog: { title: string; subtitle: string };
   moments: { title: string; subtitle: string; empty: string };
   ideas: { title: string; subtitle: string };
@@ -178,7 +180,8 @@ export const dictionaries: Record<Lang, Dictionary> = {
       featuredIdeas: "精选点子",
       featuredProjects: "精选项目",
     },
-    blog: { title: "博客", subtitle: "分享技术经验、学习笔记和思考" },
+    kinds: { all: "全部", post: "文章", moment: "瞬间", idea: "点子" },
+    blog: { title: "博客", subtitle: "技术、瞬间与点子，按时间排列" },
     moments: {
       title: "瞬间",
       subtitle: "随手记录的想法与进展",
@@ -333,9 +336,10 @@ export const dictionaries: Record<Lang, Dictionary> = {
       featuredIdeas: "Featured Ideas",
       featuredProjects: "Featured Projects",
     },
+    kinds: { all: "All", post: "Articles", moment: "Moments", idea: "Ideas" },
     blog: {
       title: "Blog",
-      subtitle: "Sharing technical experience, learning notes and thoughts",
+      subtitle: "Essays, moments and ideas, in chronological order",
     },
     moments: {
       title: "Moments",

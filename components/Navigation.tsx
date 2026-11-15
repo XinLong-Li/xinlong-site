@@ -121,15 +121,15 @@ export default function Navigation({ lang }: { lang: Lang }) {
 
   const handleThemeToggle = () => setTheme(isDark ? "light" : "dark");
 
-  // 瞬间紧跟博客（都是文字内容，相邻更自然）；/admin 刻意不在此列——
-  // 它的消费者只有站主一个，而导航栏是给访客看的，多一个入口就是把
-  // 攻击面主动写在首页上。
-  // 站主登录后会在右侧多一个图标入口（下面的 isOwner）：那是客户端按
-  // 本地提示渲染的，访客的导航结构仍然是这五项，服务端 HTML 里也没有它。
+  // 博客是统一入口：文章、瞬间、点子都混排在里面（见 app/[lang]/blog/page.tsx），
+  // 导航只留一个文字内容入口，读者不用在三个门之间做选择。旧的 /moments 与
+  // /ideas 仍然是可直接访问的归档页，只是不占导航。
+  //
+  // /admin 刻意不在此列——它的消费者只有站主一个，而导航栏是给访客看的，
+  // 多一个入口就是把攻击面主动写在首页上。站主登录后会在右侧多一个图标
+  // 入口（isOwner）：那是客户端按本地提示渲染的，访客的 HTML 里没有。
   const navItems = [
     { key: "blog", label: t.nav.blog, href: `/${lang}/blog` },
-    { key: "moments", label: t.nav.moments, href: `/${lang}/moments` },
-    { key: "ideas", label: t.nav.ideas, href: `/${lang}/ideas` },
     { key: "projects", label: t.nav.projects, href: `/${lang}/projects` },
     { key: "resume", label: t.nav.resume, href: `/${lang}/resume` },
     { key: "contact", label: t.nav.contact, href: `/${lang}/contact` },
