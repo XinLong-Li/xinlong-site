@@ -39,7 +39,7 @@ export default async function HomePage({
         <div className="grid items-center gap-10 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]">
           <div className="min-w-0">
             <p className="font-mono text-sm text-accent">{t.home.greeting}</p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight text-fg sm:text-5xl lg:text-6xl">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-fg sm:text-3xl">
               {t.home.name}
             </h1>
             <h2 className="mt-3 text-lg font-medium text-fg-muted sm:text-2xl">

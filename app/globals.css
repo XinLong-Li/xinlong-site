@@ -410,3 +410,20 @@ html[data-halloween] .site-logo::after {
 .writing-feed[data-filter="idea"] [data-kind]:not([data-kind="idea"]) {
   display: none;
 }
+
+/* ==========================================================================
+   导航左侧的个性 mark（|x|）
+
+   把 public/logo-mark.webp 当作 alpha 蒙版，用 currentColor 上色：浅色模式
+   是深色笔刷，深色模式自动变白，悬停时跟随链接变成主色。原图的黑底不去
+   参与渲染，所以不会在深色导航里糊成一片。
+   ========================================================================== */
+
+.logo-mark {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: currentColor;
+  -webkit-mask: url("/logo-mark.webp") center / contain no-repeat;
+  mask: url("/logo-mark.webp") center / contain no-repeat;
+}

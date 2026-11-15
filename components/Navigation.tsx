@@ -170,9 +170,11 @@ export default function Navigation({ lang }: { lang: Lang }) {
         {/* 旧实现是 <div onClick>，不可聚焦、非链接语义。用真正的 Link。 */}
         <Link
           href={`/${lang}`}
-          className="site-logo shrink-0 text-lg font-bold text-fg transition-colors hover:text-accent"
+          aria-label={t.siteName}
+          title={t.siteName}
+          className="site-logo inline-flex shrink-0 items-center text-fg transition-colors hover:text-accent"
         >
-          {t.siteName}
+          <span className="logo-mark" aria-hidden="true" />
         </Link>
 
         {/* lg 而不是 md：六个入口在 768px 会挤成一团，到 1024px 才放开。 */}
